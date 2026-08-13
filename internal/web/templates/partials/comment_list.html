@@ -1,0 +1,11 @@
+{{/* Expects: []model.Comment */}}
+<div class="comment-list" id="comment-list">
+  {{range .}}
+  <div class="comment-item">
+    <div class="comment-item-meta">{{fmtTime .CreatedAt}}</div>
+    {{.Body}}
+  </div>
+  {{else}}
+  <div class="comment-item-meta">No comments yet.</div>
+  {{end}}
+</div>

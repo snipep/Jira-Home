@@ -1,0 +1,20 @@
+{{/* Expects: {Query, Issues []model.Issue} */}}
+<div class="backlog-wrap">
+  <form class="toolbar" style="padding-left:0;padding-right:0;" method="get" action="/search">
+    <div class="search-input" style="max-width:420px;">
+      <span>🔍</span>
+      <input type="text" name="q" value="{{.Query}}" placeholder="Search issues…" autofocus>
+    </div>
+  </form>
+
+  {{if not .Query}}
+  <div class="empty-state">Type something to search.</div>
+  {{else if not .Issues}}
+  <div class="empty-state">No issues match "{{.Query}}".</div>
+  {{else}}
+  <div class="group">
+    <div class="group-header"><span class="group-sub">{{len .Issues}} result{{if ne (len .Issues) 1}}s{{end}}</span></div>
+    <div class="row-list">{{range .Issues}}{{template "row.html" .}}{{end}}</div>
+  </div>
+  {{end}}
+</div>

@@ -1,0 +1,79 @@
+{{/* Expects: IssueFormData */}}
+<div class="backlog-wrap">
+  <form class="form-card"
+        {{if .Editing}}
+          hx-patch="/issues/{{.Issue.IssueNumber}}"
+        {{else}}
+          hx-post="/issues"
+        {{end}}
+        hx-target="body">
+    <h2 style="margin-top:0;">{{if .Editing}}Edit {{.Issue.Key}}{{else}}Create issue{{end}}</h2>
+
+    {{if not .Editing}}
+    <div class="field">
+      <label class="field-label">Type</label>
+      <select class="field-select" name="type" onchange="toggleParentField(this)">
+        {{range .IssueTypes}}<option value="{{.Name}}" {{if eq .Name $.SelectedType}}selected{{end}}>{{.Icon}} {{.Name}}</option>{{end}}
+      </select>
+    </div>
+    {{if .SprintID}}<input type="hidden" name="sprint_id" value="{{.SprintID}}">{{end}}
+    {{end}}
+
+    <div class="field">
+      <label class="field-label">Title</label>
+      <input class="field-input" name="summary" required value="{{.Issue.Summary}}" placeholder="What needs doing?">
+    </div>
+
+    <div class="field parent-field" style="{{if ne .SelectedType "Subtask"}}display:none;{{end}}">
+      <label class="field-label">Parent <span style="font-weight:400;">(the task this subtask belongs to)</span></label>
+      <select class="field-select" name="parent_id">
+        <option value="">No parent</option>
+        {{range .ParentCandidates}}<option value="{{.ID}}" {{if int64PtrEq $.SelectedParentID .ID}}selected{{end}}>{{.Key}} — {{.Summary}}</option>{{end}}
+      </select>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label class="field-label">Priority</label>
+        <select class="field-select" name="priority">
+          {{$p := .Issue.Priority}}
+          <option value="low" {{if eq $p "low"}}selected{{end}}>Low</option>
+          <option value="medium" {{if or (eq $p "medium") (eq $p "")}}selected{{end}}>Medium</option>
+          <option value="high" {{if eq $p "high"}}selected{{end}}>High</option>
+          <option value="urgent" {{if eq $p "urgent"}}selected{{end}}>Urgent</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="field-label">Story points</label>
+        <input class="field-input" type="number" min="0" name="story_points" value="{{if .Issue.StoryPoints}}{{.Issue.StoryPoints}}{{end}}" placeholder="—">
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label class="field-label">Labels <span style="font-weight:400;">(comma separated)</span></label>
+        <input class="field-input" name="labels" value="{{join .Issue.Labels ", "}}" placeholder="frontend, backend">
+      </div>
+      <div class="field">
+        <label class="field-label">Due date</label>
+        <input class="field-input" type="date" name="due_date" value="{{.Issue.DueDate}}">
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="field-label">Description <span style="font-weight:400;">(Markdown)</span></label>
+      <textarea class="field-textarea" name="description" rows="5">{{.Issue.Description}}</textarea>
+    </div>
+
+    <div class="form-actions">
+      {{if .Editing}}
+        <a class="btn" href="/issues/{{.Issue.IssueNumber}}"
+           hx-get="/issues/{{.Issue.IssueNumber}}" hx-target="#detail-panel-body" hx-swap="innerHTML">Cancel</a>
+        <button class="btn btn-primary" type="submit">Save changes</button>
+      {{else}}
+        <a class="btn" href="/backlog">Cancel</a>
+        <button class="btn btn-primary" type="submit">Create issue</button>
+      {{end}}
+    </div>
+  </form>
+</div>

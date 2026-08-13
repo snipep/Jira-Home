@@ -1,0 +1,42 @@
+{{/* Expects: settingsTypesData */}}
+<div class="project-header" style="border-bottom:1px solid var(--border);">
+  <div class="project-title-row">
+    <a class="icon-btn" href="/board" title="Back">←</a>
+    <div class="project-title">Settings</div>
+  </div>
+  <div class="tabs">
+    <a class="tab" href="/settings/statuses">Statuses</a>
+    <a class="tab active" href="/settings/issue-types">Issue Types</a>
+    <a class="tab" href="/settings/workspace">Workspace</a>
+  </div>
+</div>
+{{if .Error}}<div class="banner-error">{{.Error}}</div>{{end}}
+<p style="color:var(--text-muted);font-size:13px;line-height:1.5;margin:16px 24px 0 24px;max-width:640px;">
+  A type can't be deleted while any issue still uses it. "No sprint" types (Epic, Story) span multiple sprints or aren't sprint items at all, and are managed in their own Epics &amp; Stories view instead of the backlog.
+</p>
+<div class="backlog-wrap">
+  <div class="group">
+    <div class="row-list">
+      {{range .Types}}
+      <div class="row">
+        <span class="type-icon" style="background:{{.Color}}">{{.Icon}}</span>
+        <span class="row-summary">{{.Name}}</span>
+        <div class="row-right">
+          {{if .NoSprint}}<span class="label-chip">No sprint</span>{{end}}
+          {{if .IsDefault}}<span class="label-chip">Default</span>{{end}}
+          <button class="icon-btn" title="Delete" hx-delete="/settings/issue-types/{{.ID}}" hx-confirm="Delete issue type {{.Name}}?">🗑️</button>
+        </div>
+      </div>
+      {{end}}
+    </div>
+    <form hx-post="/settings/issue-types" hx-target="body" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:12px 14px;background:var(--bg);">
+      <input class="field-input" name="name" placeholder="Type name" style="width:140px;" required>
+      <input class="field-input" name="icon" placeholder="Icon" style="width:80px;" maxlength="4">
+      <input type="color" name="color" value="#579DFF" style="width:40px;height:34px;padding:2px;">
+      <label style="font-size:13px;color:var(--text-muted);display:flex;align-items:center;gap:6px;">
+        <input type="checkbox" name="no_sprint"> No sprint
+      </label>
+      <button class="btn btn-primary" type="submit">+ Add issue type</button>
+    </form>
+  </div>
+</div>

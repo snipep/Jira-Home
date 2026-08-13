@@ -1,0 +1,41 @@
+{{/* Expects: settingsStatusesData */}}
+<div class="project-header" style="border-bottom:1px solid var(--border);">
+  <div class="project-title-row">
+    <a class="icon-btn" href="/board" title="Back">←</a>
+    <div class="project-title">Settings</div>
+  </div>
+  <div class="tabs">
+    <a class="tab active" href="/settings/statuses">Statuses</a>
+    <a class="tab" href="/settings/issue-types">Issue Types</a>
+    <a class="tab" href="/settings/workspace">Workspace</a>
+  </div>
+</div>
+{{if .Error}}<div class="banner-error">{{.Error}}</div>{{end}}
+<p style="color:var(--text-muted);font-size:13px;line-height:1.5;margin:16px 24px 0 24px;max-width:640px;">
+  This list sets the Kanban board's column order. A status still in use by an issue can't be deleted until those issues are reassigned.
+</p>
+<div class="backlog-wrap">
+  <div class="group">
+    <div class="row-list">
+      {{range .Statuses}}
+      <div class="row">
+        <span style="color:var(--text-faint);">⠿</span>
+        <span class="row-summary">{{.Name}}</span>
+        <div class="row-right">
+          <span class="label-chip">{{.Category}}</span>
+          <button class="icon-btn" title="Delete" hx-delete="/settings/statuses/{{.ID}}" hx-confirm="Delete status {{.Name}}?">🗑️</button>
+        </div>
+      </div>
+      {{end}}
+    </div>
+    <form hx-post="/settings/statuses" hx-target="body" style="display:flex;gap:8px;padding:12px 14px;background:var(--bg);">
+      <input class="field-input" name="name" placeholder="Status name" style="width:auto;flex:1;" required>
+      <select class="field-select" name="category" style="width:auto;">
+        <option value="todo">To do category</option>
+        <option value="in_progress">In progress category</option>
+        <option value="done">Done category</option>
+      </select>
+      <button class="btn btn-primary" type="submit">+ Add status</button>
+    </form>
+  </div>
+</div>

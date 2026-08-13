@@ -1,0 +1,34 @@
+{{/* Expects: BoardData */}}
+<div id="board-content"
+     hx-get="/board{{if .Sprint}}?sprint={{.Sprint.ID}}{{end}}"
+     hx-trigger="change from:.filter-check, keyup changed delay:400ms from:[name='q']"
+     hx-include="#board-content input"
+     hx-target="#board-content" hx-swap="outerHTML" hx-push-url="true">
+  <div class="toolbar">
+    <div class="search-input">
+      <span>🔍</span>
+      <input type="text" name="q" placeholder="Filter cards…">
+    </div>
+    <div class="toolbar-spacer"></div>
+    {{if .Sprint}}
+      <div class="sprint-meta">{{.Sprint.Name}}{{if .Sprint.StartDate}} · {{.Sprint.StartDate}} – {{.Sprint.EndDate}}{{end}}</div>
+      <a class="btn" href="/issues/new?sprint_id={{.Sprint.ID}}">+ Add issue</a>
+      <a class="btn" href="/sprints/{{.Sprint.ID}}/complete">Complete sprint</a>
+    {{else}}
+      <div class="sprint-meta">No active sprint — <a href="/backlog">start one from the Backlog</a>.</div>
+    {{end}}
+  </div>
+
+  {{if .Sprint}}
+  <div class="board-columns">
+    {{range .Columns}}
+    <div class="board-column" data-status-id="{{.Status.ID}}">
+      <div class="board-column-header">{{.Status.Name}} <span class="column-count">{{len .Issues}}</span></div>
+      {{range .Issues}}{{template "card.html" .}}{{end}}
+    </div>
+    {{end}}
+  </div>
+  {{else}}
+  <div class="empty-state">This project has no active sprint. Create or start one from the Backlog to see it here.</div>
+  {{end}}
+</div>

@@ -1,0 +1,14 @@
+services:
+  jira-home:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      JIRA_HOME_DB: /data/jira-home.db
+      JIRA_HOME_ADDR: ":8080"
+    volumes:
+      - jira-home-data:/data
+    restart: unless-stopped
+
+volumes:
+  jira-home-data:

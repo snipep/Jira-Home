@@ -1,0 +1,40 @@
+{{/* Expects: EpicsStoriesData */}}
+<p style="color:var(--text-muted);font-size:13px;line-height:1.5;margin:16px 24px 0 24px;max-width:640px;">
+  Epics and Stories are managed here, separately from the Task/Bug backlog — they don't get scheduled into sprints.
+</p>
+<div class="backlog-wrap">
+  {{range .Groups}}
+  <div class="group">
+    <div class="group-header">
+      <span class="group-title">{{.Type.Name}}{{if ne (len .Issues) 1}}s{{end}}</span>
+      <span class="group-sub">{{len .Issues}} issue{{if ne (len .Issues) 1}}s{{end}} · {{.Points}} point{{if ne .Points 1}}s{{end}}</span>
+      <div class="group-header-spacer"></div>
+      <a class="btn" href="/issues/new?type={{.Type.Name}}">+ Create {{.Type.Name}}</a>
+    </div>
+    <div class="row-list">
+      {{range .Issues}}
+      <div class="row" style="--card-color:{{.TypeColor}}">
+        <span class="type-icon" style="background:{{.TypeColor}}">{{.TypeIcon}}</span>
+        <span class="row-key">{{.Key}}</span>
+        <a class="row-summary" href="/issues/{{.IssueNumber}}"
+           hx-get="/issues/{{.IssueNumber}}" hx-target="#detail-panel-body" hx-swap="innerHTML">{{.Summary}}</a>
+        <div>{{range .Labels}}<span class="label-chip">{{.}}</span>{{end}}</div>
+        <div class="row-right">
+          <span title="Priority: {{priorityLabel .Priority}}">{{priorityIcon .Priority}}</span>
+          <span class="points-badge">{{pointsOrDash .StoryPoints}}</span>
+          <span class="status-pill {{statusClass .StatusCategory}}">{{upper .StatusName}}</span>
+        </div>
+        <div class="row-actions">
+          <a class="icon-btn" title="Edit" href="/issues/{{.IssueNumber}}/edit">✏️</a>
+          <button class="icon-btn" title="Delete"
+                  hx-delete="/issues/{{.IssueNumber}}"
+                  hx-confirm="Delete {{.Key}} — &quot;{{.Summary}}&quot;? This can't be undone.">🗑️</button>
+        </div>
+      </div>
+      {{else}}
+      <div class="empty-hint">No {{.Type.Name}}s yet.</div>
+      {{end}}
+    </div>
+  </div>
+  {{end}}
+</div>

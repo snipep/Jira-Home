@@ -1,0 +1,28 @@
+{{/* Expects: model.Project */}}
+<div class="backlog-wrap">
+  <form class="form-card" hx-post="/sprints" hx-target="body">
+    <h2 style="margin-top:0;">New sprint</h2>
+    <div class="field">
+      <label class="field-label">Name</label>
+      <input class="field-input" name="name" required placeholder="Sprint 5">
+    </div>
+    <div class="field">
+      <label class="field-label">Goal <span style="font-weight:400;">(optional)</span></label>
+      <textarea class="field-textarea" name="goal" rows="2" placeholder="What are you trying to accomplish this sprint?"></textarea>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label class="field-label">Start date</label>
+        <input class="field-input" type="date" name="start_date">
+      </div>
+      <div class="field">
+        <label class="field-label">End date</label>
+        <input class="field-input" type="date" name="end_date">
+      </div>
+    </div>
+    <div class="form-actions">
+      <a class="btn" href="/backlog">Cancel</a>
+      <button class="btn btn-primary" type="submit">Create sprint</button>
+    </div>
+  </form>
+</div>

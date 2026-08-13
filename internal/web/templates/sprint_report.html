@@ -1,0 +1,25 @@
+{{/* Expects: {Project, Sprint, Rows []store.SprintReportRow, Done, Total} */}}
+<div class="backlog-wrap">
+  <div class="group">
+    <div class="group-header">
+      <span class="group-title">{{.Sprint.Name}} report</span>
+      <span class="group-sub">{{.Done}} of {{.Total}} planned issues completed</span>
+    </div>
+    <div class="row-list">
+      {{range .Rows}}
+      <div class="row" style="--card-color:{{.Issue.TypeColor}}">
+        <span class="type-icon" style="background:{{.Issue.TypeColor}}">{{.Issue.TypeIcon}}</span>
+        <span class="row-key">{{.Issue.Key}}</span>
+        <a class="row-summary" href="/issues/{{.Issue.IssueNumber}}"
+           hx-get="/issues/{{.Issue.IssueNumber}}" hx-target="#detail-panel-body" hx-swap="innerHTML">{{.Issue.Summary}}</a>
+        <div class="row-right">
+          {{if .Completed}}<span class="status-pill status-done">DONE</span>
+          {{else}}<span class="sprint-state-badge state-planned">carried over</span>{{end}}
+        </div>
+      </div>
+      {{else}}
+      <div class="empty-hint">No issues were ever part of this sprint.</div>
+      {{end}}
+    </div>
+  </div>
+</div>

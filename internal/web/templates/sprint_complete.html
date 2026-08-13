@@ -1,0 +1,14 @@
+{{/* Expects: {Project, Sprint, Target store.CompletionTarget} */}}
+<div class="backlog-wrap">
+  <div class="form-card">
+    <h2 style="margin-top:0;">Complete {{.Sprint.Name}}?</h2>
+    <p style="color:var(--text-muted);font-size:13px;line-height:1.6;">
+      {{.Target.UnfinishedCount}} unfinished issue{{if ne .Target.UnfinishedCount 1}}s{{end}} will move to {{.Target.TargetName}}.
+      Completed issues stay right here, in this sprint's history — nothing gets deleted.
+    </p>
+    <form method="post" action="/sprints/{{.Sprint.ID}}/complete" class="form-actions">
+      <a class="btn" href="/backlog">Cancel</a>
+      <button class="btn btn-primary" type="submit">Complete sprint</button>
+    </form>
+  </div>
+</div>

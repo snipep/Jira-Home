@@ -1,0 +1,14 @@
+{{/* Expects: {Project, Issues, Query} */}}
+<div class="backlog-wrap">
+  <form class="toolbar" style="padding-left:0;padding-right:0;" method="get">
+    <div class="search-input">
+      <span>🔍</span>
+      <input type="text" name="q" value="{{.Query}}" placeholder="Search this project…">
+    </div>
+  </form>
+  <div class="group">
+    <div class="row-list">
+      {{range .Issues}}{{template "row.html" .}}{{else}}<div class="empty-hint">No issues found.</div>{{end}}
+    </div>
+  </div>
+</div>

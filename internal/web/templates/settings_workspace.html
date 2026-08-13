@@ -1,0 +1,35 @@
+{{/* Expects: {Project model.Project, Error string} */}}
+<div class="project-header" style="border-bottom:1px solid var(--border);">
+  <div class="project-title-row">
+    <a class="icon-btn" href="/board" title="Back">←</a>
+    <div class="project-title">Settings</div>
+  </div>
+  <div class="tabs">
+    <a class="tab" href="/settings/statuses">Statuses</a>
+    <a class="tab" href="/settings/issue-types">Issue Types</a>
+    <a class="tab active" href="/settings/workspace">Workspace</a>
+  </div>
+</div>
+{{if .Error}}<div class="banner-error">{{.Error}}</div>{{end}}
+<p style="color:var(--text-muted);font-size:13px;line-height:1.5;margin:16px 24px 0 24px;max-width:640px;">
+  This app has one workspace — no project switcher, just this board, backlog, and its Epics &amp; Stories. Rename it here.
+</p>
+<div class="backlog-wrap">
+  <form class="form-card" method="post" action="/settings/workspace">
+    <div class="field">
+      <label class="field-label">Name</label>
+      <input class="field-input" name="name" required value="{{.Project.Name}}">
+    </div>
+    <div class="field">
+      <label class="field-label">Description <span style="font-weight:400;">(optional)</span></label>
+      <textarea class="field-textarea" name="description" rows="3">{{.Project.Description}}</textarea>
+    </div>
+    <div class="field">
+      <label class="field-label">Issue key prefix</label>
+      <input class="field-input" value="{{.Project.KeyPrefix}}" disabled style="opacity:.6;">
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" type="submit">Save</button>
+    </div>
+  </form>
+</div>

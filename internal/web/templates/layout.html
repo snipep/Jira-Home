@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{if .Title}}{{.Title}} · {{end}}Jira Home</title>
+<script>
+  (function(){
+    try{
+      var stored = localStorage.getItem('lj-theme');
+      var theme = stored || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', theme);
+    }catch(e){}
+  })();
+</script>
+<script src="https://unpkg.com/htmx.org@1.9.12"></script>
+<style>
+  :root{
+    --bg:#F7F8F9; --surface:#FFFFFF; --column-bg:#F1F2F4; --border:#DCDFE4;
+    --text:#1D2125; --text-muted:#626F86; --text-faint:#8590A2;
+    --brand:#0C66E4; --brand-bg:#E9F2FF; --radius:8px;
+    --shadow:0 1px 1px rgba(9,30,66,.08), 0 0 1px rgba(9,30,66,.15);
+    --shadow-hover:0 4px 8px -2px rgba(9,30,66,.15), 0 0 1px rgba(9,30,66,.2);
+    --status-todo-bg:#DCDFE4; --status-todo-text:#44546F;
+    --status-inprogress-bg:#E9F2FF; --status-inprogress-text:#0C66E4;
+    --status-done-bg:#DFFCF0; --status-done-text:#1F845A;
+    --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  :root[data-theme="dark"]{
+    --bg:#0E1113; --surface:#181C1F; --column-bg:#20252A; --border:#333A42;
+    --text:#E4E7EB; --text-muted:#9AA5B1; --text-faint:#6E7885;
+    --brand:#579DFF; --brand-bg:#1C2B41;
+    --shadow:0 1px 1px rgba(0,0,0,.4), 0 0 1px rgba(0,0,0,.5);
+    --shadow-hover:0 4px 12px -2px rgba(0,0,0,.5), 0 0 1px rgba(0,0,0,.6);
+    --status-todo-bg:#2C333A; --status-todo-text:#B6C2CF;
+    --status-inprogress-bg:#1C2B41; --status-inprogress-text:#85B8FF;
+    --status-done-bg:#1C3329; --status-done-text:#4BCE97;
+  }
+  *{box-sizing:border-box;}
+  html{color-scheme:light dark;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);font-size:14px;}
+  a{color:inherit;text-decoration:none;}
+  button{font-family:inherit;cursor:pointer;}
+  input,select,textarea{font-family:inherit;}
+
+  .topbar{height:52px;display:flex;align-items:center;gap:16px;padding:0 16px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:20;}
+  .topbar-section{display:flex;align-items:center;flex:1;min-width:0;}
+  .topbar-section.center{justify-content:center;}
+  .topbar-section.end{justify-content:flex-end;gap:4px;}
+  .logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px;flex-shrink:0;}
+  .logo-mark{width:26px;height:26px;border-radius:6px;background:linear-gradient(135deg,#0C66E4,#579DFF);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:800;}
+  .global-search{flex:1;max-width:420px;display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:6px;padding:6px 10px;}
+  .global-search input{border:none;background:transparent;outline:none;font-size:13px;width:100%;color:var(--text);}
+  .icon-btn{width:32px;height:32px;border-radius:6px;border:none;background:transparent;display:flex;align-items:center;justify-content:center;color:var(--text-muted);}
+  .icon-btn:hover{background:var(--bg);}
+
+  .project-header{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 24px 0 24px;}
+  .project-title-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+  .project-avatar{width:32px;height:32px;border-radius:7px;background:#8F7EE7;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;}
+  .project-title{font-size:18px;font-weight:600;}
+  .project-key-chip{font-size:11px;font-weight:700;color:var(--text-faint);letter-spacing:.03em;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:2px 6px;}
+  .tabs{display:flex;gap:4px;}
+  .tab{padding:10px 4px;margin-right:20px;font-size:14px;color:var(--text-muted);border-bottom:2px solid transparent;font-weight:500;display:inline-block;}
+  .tab.active{color:var(--brand);border-bottom-color:var(--brand);font-weight:600;}
+  .tab:hover{color:var(--text);}
+
+  .toolbar{display:flex;align-items:center;gap:10px;padding:14px 24px;flex-wrap:wrap;}
+  .search-input{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;min-width:200px;}
+  .search-input input{border:none;outline:none;background:transparent;font-size:13px;width:100%;color:var(--text);}
+  .toolbar-spacer{flex:1;}
+  .sprint-meta{font-size:13px;color:var(--text-muted);}
+  .btn{border-radius:6px;padding:6px 12px;font-size:13px;font-weight:500;border:1px solid var(--border);background:var(--surface);color:var(--text);}
+  .btn:hover{background:var(--bg);}
+  .btn-primary{background:var(--brand);border-color:var(--brand);color:#fff;}
+  .btn-primary:hover{filter:brightness(.9);}
+  .btn-danger{color:#E2483D;border-color:#E2483D;}
+  .btn-sm{padding:3px 8px;font-size:12px;}
+
+  .type-icon{width:18px;height:18px;border-radius:3px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;}
+  .points-badge{min-width:20px;height:20px;border-radius:50%;background:var(--bg);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text-muted);padding:0 4px;}
+  .label-chip{background:var(--bg);color:var(--text-muted);border-radius:10px;padding:2px 8px;font-size:11px;font-weight:500;display:inline-block;margin-right:4px;}
+  .status-pill{font-size:11px;font-weight:700;letter-spacing:.02em;border-radius:4px;padding:3px 8px;white-space:nowrap;border:none;}
+  .status-todo{background:var(--status-todo-bg);color:var(--status-todo-text);}
+  .status-inprogress{background:var(--status-inprogress-bg);color:var(--status-inprogress-text);}
+  .status-done{background:var(--status-done-bg);color:var(--status-done-text);}
+
+  .board-columns{display:grid;grid-auto-flow:column;grid-auto-columns:270px;gap:16px;padding:0 24px 24px 24px;overflow-x:auto;align-items:start;}
+  .board-column{background:var(--column-bg);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:120px;}
+  .board-column-header{display:flex;align-items:center;gap:8px;padding:4px 6px 8px 6px;font-size:12px;font-weight:700;color:var(--text-muted);letter-spacing:.03em;text-transform:uppercase;}
+  .column-count{background:var(--border);color:var(--text-muted);border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;}
+  .card{background:var(--surface);border-radius:var(--radius);padding:10px 12px 10px 10px;box-shadow:var(--shadow);border-left:3px solid var(--card-color,transparent);display:block;}
+  .card:hover{box-shadow:var(--shadow-hover);}
+  .card[draggable="true"]{cursor:grab;}
+  .card.dragging{opacity:.4;}
+  .board-column.drag-over{outline:2px dashed var(--brand);outline-offset:-2px;}
+  .card-top{display:flex;align-items:center;gap:6px;margin-bottom:6px;}
+  .card-key{font-size:11px;color:var(--text-faint);font-weight:600;font-family:var(--font-mono);}
+  .card-summary{font-size:13px;line-height:1.4;margin-bottom:8px;color:var(--text);}
+  .card-footer{display:flex;align-items:center;justify-content:space-between;}
+  .add-issue-btn{display:flex;align-items:center;gap:6px;padding:8px 6px;color:var(--text-muted);font-size:13px;border-radius:6px;background:transparent;border:none;text-align:left;width:100%;}
+  .add-issue-btn:hover{background:rgba(127,127,127,.12);}
+
+  .backlog-wrap{padding:0 24px 40px 24px;display:flex;flex-direction:column;gap:20px;}
+  .group{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+  .group-header{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--bg);border-bottom:1px solid var(--border);flex-wrap:wrap;}
+  .group-title{font-weight:600;font-size:14px;}
+  .group-sub{font-size:12px;color:var(--text-muted);}
+  .group-header-spacer{flex:1;}
+  .row-list{display:flex;flex-direction:column;}
+  .row{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);border-left:3px solid var(--card-color,transparent);}
+  .row:last-child{border-bottom:none;}
+  .row:hover{background:var(--bg);}
+  .row-key{font-size:12px;color:var(--text-faint);font-weight:600;font-family:var(--font-mono);width:56px;flex-shrink:0;}
+  .row-summary{flex:1;font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .row-right{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+  .row-actions{display:flex;align-items:center;gap:2px;flex-shrink:0;margin-left:8px;}
+  .empty-hint{padding:16px 14px;color:var(--text-muted);font-size:13px;}
+  .sprint-state-badge{font-size:10px;font-weight:700;letter-spacing:.03em;border-radius:4px;padding:2px 7px;white-space:nowrap;}
+  .state-planned{background:var(--border);color:var(--text-muted);}
+  .state-active{background:var(--status-inprogress-bg);color:var(--status-inprogress-text);}
+  .state-completed{background:var(--status-done-bg);color:var(--status-done-text);}
+
+  .field{margin-bottom:14px;}
+  .field-label{font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:6px;display:block;}
+  .field-input,.field-select,.field-textarea{width:100%;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:6px;padding:8px 10px;font-size:13px;}
+  .field-textarea{resize:vertical;min-height:70px;}
+  .field-row{display:flex;gap:12px;}
+  .field-row>div{flex:1;}
+  .form-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px;max-width:640px;}
+  .form-actions{display:flex;gap:8px;margin-top:16px;}
+
+  .detail-wrap{max-width:760px;margin:0 auto;padding:24px;}
+  .detail-header-row{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+  .detail-summary{font-size:20px;font-weight:600;margin:6px 0 18px 0;}
+  .detail-field{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+  .detail-field-label{width:110px;font-size:12px;color:var(--text-muted);flex-shrink:0;}
+  .detail-desc{font-size:13px;color:var(--text);line-height:1.6;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px;white-space:pre-wrap;}
+  .comment-list{display:flex;flex-direction:column;gap:10px;margin:12px 0;}
+  .comment-item{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:13px;line-height:1.5;}
+  .comment-item-meta{font-size:11px;color:var(--text-faint);margin-bottom:4px;display:flex;gap:8px;align-items:center;}
+
+  .banner-error{background:#FFECEB;color:#E2483D;border:1px solid #E2483D;border-radius:6px;padding:10px 14px;margin:16px 24px;font-size:13px;}
+  :root[data-theme="dark"] .banner-error{background:#42231F;color:#FF9C8F;border-color:#FF9C8F;}
+  .empty-state{padding:40px 24px;text-align:center;color:var(--text-muted);}
+
+  /* ---------- Issue detail slide-over ---------- */
+  .detail-overlay{position:fixed;inset:0;background:rgba(9,30,66,.54);opacity:0;pointer-events:none;transition:opacity .15s ease;z-index:30;}
+  .detail-overlay.open{opacity:1;pointer-events:auto;}
+  .detail-panel{
+    position:fixed;top:0;right:0;height:100%;width:460px;max-width:92vw;background:var(--surface);
+    box-shadow:-4px 0 24px rgba(0,0,0,.2);transform:translateX(100%);transition:transform .18s ease;
+    z-index:31;display:flex;flex-direction:column;
+  }
+  .detail-panel.open{transform:translateX(0);}
+  .detail-panel-header{display:flex;justify-content:flex-end;padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0;}
+  .detail-panel-body{flex:1;overflow-y:auto;}
+  .detail-panel-body .detail-wrap{margin:0;max-width:none;}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-section start">
+    <a class="logo" href="/board"><span class="logo-mark">JH</span> Jira Home</a>
+  </div>
+  <div class="topbar-section center">
+    <form class="global-search" action="/search" method="get">
+      <span>🔍</span>
+      <input type="text" name="q" placeholder="Search issues…">
+    </form>
+  </div>
+  <div class="topbar-section end">
+    <button class="icon-btn" id="theme-toggle" title="Toggle color theme" type="button">🌓</button>
+    <a class="icon-btn" href="/settings/statuses" title="Settings">⚙️</a>
+  </div>
+</div>
+
+<div class="project-header">
+  <div class="tabs">
+    <a class="tab {{if eq .Active "board"}}active{{end}}" href="/board">Board</a>
+    <a class="tab {{if eq .Active "backlog"}}active{{end}}" href="/backlog">Backlog</a>
+    <a class="tab {{if eq .Active "epics-stories"}}active{{end}}" href="/epics-stories">Epics &amp; Stories</a>
+    <a class="tab {{if eq .Active "sprints"}}active{{end}}" href="/sprints">Sprints</a>
+  </div>
+</div>
+
+<div id="main">
+{{.Body}}
+</div>
+
+<div class="detail-overlay" id="detail-overlay" onclick="closeDetailPanel()"></div>
+<div class="detail-panel" id="detail-panel">
+  <div class="detail-panel-header">
+    <button class="icon-btn" title="Close" onclick="closeDetailPanel()">✕</button>
+  </div>
+  <div class="detail-panel-body" id="detail-panel-body"></div>
+</div>
+
+<script>
+  document.getElementById('theme-toggle').addEventListener('click', () => {
+    const root = document.documentElement;
+    const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try{ localStorage.setItem('lj-theme', next); }catch(e){}
+  });
+
+  // Issue detail slide-over: any htmx-driven link/form that targets
+  // #detail-panel-body opens the panel once its content lands; closing just
+  // slides it away again (no need to clear the swapped content).
+  function closeDetailPanel(){
+    document.getElementById('detail-panel').classList.remove('open');
+    document.getElementById('detail-overlay').classList.remove('open');
+  }
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeDetailPanel();
+  });
+  document.body.addEventListener('htmx:afterSwap', (evt) => {
+    if (evt.target && evt.target.id === 'detail-panel-body') {
+      document.getElementById('detail-panel').classList.add('open');
+      document.getElementById('detail-overlay').classList.add('open');
+    }
+  });
+
+  // Issue form: the Parent field only makes sense for a Subtask, so it stays
+  // hidden until that's the selected type.
+  function toggleParentField(typeSelect) {
+    const form = typeSelect.closest('form');
+    const field = form && form.querySelector('.parent-field');
+    if (!field) return;
+    field.style.display = typeSelect.value === 'Subtask' ? '' : 'none';
+  }
+
+  // Board drag-and-drop: plain HTML5 DnD between status columns, calling the
+  // same /move endpoint the detail panel's Status dropdown uses, then
+  // refreshing the board fragment via htmx so counts/columns stay in sync.
+  let dragCard = null;
+  document.addEventListener('dragstart', (e) => {
+    const card = e.target.closest('.card[draggable="true"]');
+    if (!card) return;
+    dragCard = card;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', card.dataset.moveUrl);
+    card.classList.add('dragging');
+  });
+  document.addEventListener('dragend', () => {
+    if (dragCard) dragCard.classList.remove('dragging');
+    dragCard = null;
+    document.querySelectorAll('.board-column.drag-over').forEach((c) => c.classList.remove('drag-over'));
+  });
+  document.addEventListener('dragover', (e) => {
+    const col = e.target.closest('.board-column[data-status-id]');
+    if (!col) return;
+    e.preventDefault();
+    col.classList.add('drag-over');
+  });
+  document.addEventListener('dragleave', (e) => {
+    const col = e.target.closest('.board-column[data-status-id]');
+    if (col) col.classList.remove('drag-over');
+  });
+  document.addEventListener('drop', (e) => {
+    const col = e.target.closest('.board-column[data-status-id]');
+    if (!col) return;
+    e.preventDefault();
+    col.classList.remove('drag-over');
+    const moveUrl = e.dataTransfer.getData('text/plain');
+    if (!moveUrl) return;
+    fetch(moveUrl, {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded', 'HX-Request': 'true'},
+      body: 'status_id=' + encodeURIComponent(col.dataset.statusId),
+    }).then(() => {
+      const boardContent = document.getElementById('board-content');
+      if (boardContent) htmx.ajax('GET', location.pathname + location.search, {target: boardContent, swap: 'outerHTML'});
+    }).catch((err) => console.error('move failed', err));
+  });
+</script>
+</body>
+</html>

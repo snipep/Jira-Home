@@ -1,0 +1,40 @@
+{{/* Expects: BacklogData */}}
+<div class="backlog-wrap">
+  <div class="toolbar" style="padding-left:0;padding-right:0;">
+    <div class="toolbar-spacer"></div>
+    <a class="btn" href="/sprints/new">+ Create sprint</a>
+  </div>
+
+  {{range .SprintGroups}}
+  <div class="group">
+    <div class="group-header">
+      <span class="group-title">{{.Sprint.Name}}</span>
+      <span class="sprint-state-badge state-{{.Sprint.State}}">{{upper .Sprint.State}}</span>
+      <span class="group-sub">
+        {{if .Sprint.StartDate}}{{.Sprint.StartDate}} – {{.Sprint.EndDate}} · {{end}}{{len .Issues}} issue{{if ne (len .Issues) 1}}s{{end}} · {{.Points}} point{{if ne .Points 1}}s{{end}}
+      </span>
+      <div class="group-header-spacer"></div>
+      {{if eq .Sprint.State "planned"}}
+        <form method="post" action="/sprints/{{.Sprint.ID}}/start"><button class="btn" type="submit">Start sprint</button></form>
+      {{else if eq .Sprint.State "active"}}
+        <a class="btn" href="/sprints/{{.Sprint.ID}}/complete">Complete sprint</a>
+      {{end}}
+    </div>
+    <div class="row-list">
+      {{range .Issues}}{{template "row.html" .}}{{else}}<div class="empty-hint">No issues yet — move some in from the backlog.</div>{{end}}
+    </div>
+  </div>
+  {{end}}
+
+  <div class="group">
+    <div class="group-header">
+      <span class="group-title">Backlog</span>
+      <span class="group-sub">{{len .Backlog}} issue{{if ne (len .Backlog) 1}}s{{end}} · {{.BacklogPts}} point{{if ne .BacklogPts 1}}s{{end}}</span>
+      <div class="group-header-spacer"></div>
+      <a class="btn" href="/issues/new">+ Create issue</a>
+    </div>
+    <div class="row-list">
+      {{range .Backlog}}{{template "row.html" .}}{{else}}<div class="empty-hint">Backlog is empty.</div>{{end}}
+    </div>
+  </div>
+</div>

@@ -1,0 +1,2142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Local Jira — Board & Backlog Wireframe</title>
+<style>
+  :root{
+    --bg:#F7F8F9;
+    --surface:#FFFFFF;
+    --column-bg:#F1F2F4;
+    --border:#DCDFE4;
+    --text:#1D2125;
+    --text-muted:#626F86;
+    --text-faint:#8590A2;
+    --brand:#0C66E4;
+    --brand-bg:#E9F2FF;
+    --radius:8px;
+    --shadow:0 1px 1px rgba(9,30,66,.08), 0 0 1px rgba(9,30,66,.15);
+    --shadow-hover:0 4px 8px -2px rgba(9,30,66,.15), 0 0 1px rgba(9,30,66,.2);
+    --overlay:rgba(9,30,66,.35);
+    --panel-shadow:-8px 0 24px rgba(9,30,66,.15);
+
+    --status-todo-bg:#DCDFE4;      --status-todo-text:#44546F;
+    --status-inprogress-bg:#E9F2FF; --status-inprogress-text:#0C66E4;
+    --status-blocked-bg:#FFECEB;    --status-blocked-text:#E2483D;
+    --status-done-bg:#DFFCF0;       --status-done-text:#1F845A;
+
+    --type-epic:#8F7EE7; --type-story:#4BCE97; --type-task:#579DFF;
+    --type-subtask:#85B8FF; --type-bug:#F87168;
+
+    --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --focus-ring:0 0 0 2px var(--surface), 0 0 0 4px var(--brand);
+    --t:.15s ease;
+  }
+  :root[data-theme="dark"]{
+    --bg:#0E1113;
+    --surface:#181C1F;
+    --column-bg:#20252A;
+    --border:#333A42;
+    --text:#E4E7EB;
+    --text-muted:#9AA5B1;
+    --text-faint:#6E7885;
+    --brand:#579DFF;
+    --brand-bg:#1C2B41;
+    --shadow:0 1px 1px rgba(0,0,0,.4), 0 0 1px rgba(0,0,0,.5);
+    --shadow-hover:0 4px 12px -2px rgba(0,0,0,.5), 0 0 1px rgba(0,0,0,.6);
+    --overlay:rgba(0,0,0,.55);
+    --panel-shadow:-8px 0 24px rgba(0,0,0,.5);
+
+    --status-todo-bg:#2C333A;       --status-todo-text:#B6C2CF;
+    --status-inprogress-bg:#1C2B41; --status-inprogress-text:#85B8FF;
+    --status-blocked-bg:#42231F;    --status-blocked-text:#FF9C8F;
+    --status-done-bg:#1C3329;       --status-done-text:#4BCE97;
+  }
+  *{box-sizing:border-box;}
+  html{color-scheme:light dark;}
+  html[data-theme="dark"]{color-scheme:dark;}
+  html[data-theme="light"]{color-scheme:light;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    font-size:14px;
+    -webkit-font-smoothing:antialiased;
+    transition:background-color var(--t), color var(--t);
+  }
+  a{color:inherit;text-decoration:none;}
+  button{font-family:inherit;cursor:pointer;}
+  body, body *{transition:background-color var(--t), border-color var(--t), color var(--t), box-shadow var(--t), transform var(--t);}
+  @media (prefers-reduced-motion:reduce){
+    body, body *{transition:none !important;}
+  }
+  :focus-visible{outline:none;box-shadow:var(--focus-ring);border-radius:4px;}
+
+  /* ---------- Top bar ---------- */
+  .topbar{
+    height:52px;display:flex;align-items:center;gap:16px;
+    padding:0 16px;background:var(--surface);border-bottom:1px solid var(--border);
+    position:sticky;top:0;z-index:20;
+  }
+  /* Three equal flex tracks so the center one is centered on the whole bar, not just the leftover space. */
+  .topbar-section{display:flex;align-items:center;flex:1;min-width:0;}
+  .topbar-section.center{justify-content:center;}
+  .topbar-section.end{justify-content:flex-end;gap:4px;}
+  .logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px;color:var(--text);flex-shrink:0;}
+  .logo-mark{
+    width:26px;height:26px;border-radius:6px;background:linear-gradient(135deg,#0C66E4,#579DFF);
+    display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:800;
+  }
+  .global-search{
+    flex:1;max-width:420px;display:flex;align-items:center;gap:8px;
+    background:var(--bg);border:1px solid transparent;border-radius:6px;padding:6px 10px;color:var(--text-faint);
+  }
+  .global-search input{
+    border:none;background:transparent;outline:none;font-size:13px;width:100%;color:var(--text);
+  }
+  .icon-btn{
+    width:32px;height:32px;border-radius:6px;border:none;background:transparent;
+    display:flex;align-items:center;justify-content:center;color:var(--text-muted);
+  }
+  .icon-btn:hover{background:var(--bg);}
+
+  /* ---------- Project header ---------- */
+  .project-header{
+    background:var(--surface);border-bottom:1px solid var(--border);
+    padding:16px 24px 0 24px;
+  }
+  .project-title-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+  .project-avatar{
+    width:32px;height:32px;border-radius:7px;background:#8F7EE7;color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;
+  }
+  .project-title{font-size:18px;font-weight:600;}
+  .project-key-chip{
+    font-size:11px;font-weight:700;color:var(--text-faint);letter-spacing:.03em;
+    background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:2px 6px;
+  }
+  .tabs{display:flex;gap:4px;}
+  .tab{
+    padding:10px 4px;margin-right:20px;font-size:14px;color:var(--text-muted);
+    border-bottom:2px solid transparent;cursor:pointer;font-weight:500;
+  }
+  .tab.active{color:var(--brand);border-bottom-color:var(--brand);font-weight:600;}
+  .tab:hover{color:var(--text);}
+
+  /* ---------- Toolbar (shared) ---------- */
+  .toolbar{
+    display:flex;align-items:center;gap:10px;padding:14px 24px;flex-wrap:wrap;
+  }
+  .search-input{
+    display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);
+    border-radius:6px;padding:6px 10px;min-width:200px;color:var(--text-faint);
+  }
+  .search-input input{border:none;outline:none;background:transparent;font-size:13px;width:100%;color:var(--text);}
+  .chip-filter{
+    display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);
+    border-radius:6px;padding:6px 10px;font-size:13px;color:var(--text-muted);
+  }
+  .chip-filter:hover{border-color:#B3B9C4;}
+  .chip-filter.active{border-color:var(--brand);color:var(--brand);background:var(--brand-bg);}
+  .toolbar-spacer{flex:1;}
+
+  .filter-wrap{position:relative;}
+  .filter-count{
+    display:none;background:var(--brand);color:#fff;border-radius:8px;padding:0 5px;font-size:10px;font-weight:700;
+  }
+  .filter-count.show{display:inline-block;}
+  .filter-dropdown{
+    position:absolute;top:calc(100% + 6px);left:0;z-index:15;min-width:170px;
+    background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow-hover);
+    padding:6px;display:none;flex-direction:column;gap:1px;
+  }
+  .filter-dropdown.open{display:flex;}
+  .filter-dropdown label{
+    display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;font-size:13px;
+    color:var(--text);cursor:pointer;text-transform:capitalize;
+  }
+  .filter-dropdown label:hover{background:var(--bg);}
+  .filter-dropdown input[type="checkbox"]{accent-color:var(--brand);width:14px;height:14px;cursor:pointer;}
+  .is-hidden{display:none !important;}
+  .sprint-meta{font-size:13px;color:var(--text-muted);display:flex;align-items:center;gap:8px;}
+  .btn{
+    border-radius:6px;padding:6px 12px;font-size:13px;font-weight:500;border:1px solid var(--border);
+    background:var(--surface);color:var(--text);
+  }
+  .btn:hover{background:var(--bg);}
+  .btn-primary{background:var(--brand);border-color:var(--brand);color:#fff;}
+  .btn-primary:hover{filter:brightness(.9);}
+  .btn-ghost{border:1px dashed var(--border);background:transparent;color:var(--text-muted);}
+
+  /* ---------- Badges: type / priority / points / labels / status ---------- */
+  .type-icon{
+    width:18px;height:18px;border-radius:3px;display:inline-flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .type-epic{background:#8F7EE7;}
+  .type-story{background:#4BCE97;}
+  .type-task{background:#579DFF;}
+  .type-subtask{background:#85B8FF;}
+  .type-bug{background:#F87168;}
+
+  .priority-icon{width:16px;height:16px;flex-shrink:0;}
+  .points-badge{
+    min-width:20px;height:20px;border-radius:50%;background:var(--bg);border:1px solid var(--border);
+    display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text-muted);
+    padding:0 4px;
+  }
+  .label-chip{
+    background:var(--bg);color:var(--text-muted);border-radius:10px;padding:2px 8px;font-size:11px;font-weight:500;
+  }
+  .status-pill{
+    font-size:11px;font-weight:700;letter-spacing:.02em;border-radius:4px;padding:3px 8px;white-space:nowrap;
+  }
+  .status-todo{background:var(--status-todo-bg);color:var(--status-todo-text);}
+  .status-inprogress{background:var(--status-inprogress-bg);color:var(--status-inprogress-text);}
+  .status-blocked{background:var(--status-blocked-bg);color:var(--status-blocked-text);}
+  .status-done{background:var(--status-done-bg);color:var(--status-done-text);}
+
+  /* ---------- Board ---------- */
+  .board-columns{
+    display:grid;grid-auto-flow:column;grid-auto-columns:270px;gap:16px;
+    padding:0 24px 24px 24px;overflow-x:auto;align-items:start;
+  }
+  .board-column{background:var(--column-bg);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:120px;}
+  .board-column-header{
+    display:flex;align-items:center;gap:8px;padding:4px 6px 8px 6px;font-size:12px;font-weight:700;
+    color:var(--text-muted);letter-spacing:.03em;text-transform:uppercase;
+  }
+  .column-count{
+    background:var(--border);color:var(--text-muted);border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;
+  }
+  .card{
+    background:var(--surface);border-radius:var(--radius);padding:10px 12px 10px 10px;box-shadow:var(--shadow);
+    cursor:pointer;border:1px solid transparent;border-left:3px solid transparent;
+  }
+  .card:hover{box-shadow:var(--shadow-hover);transform:translateY(-1px);}
+  .card[data-type="epic"]{border-left-color:var(--type-epic);}
+  .card[data-type="story"]{border-left-color:var(--type-story);}
+  .card[data-type="task"]{border-left-color:var(--type-task);}
+  .card[data-type="subtask"]{border-left-color:var(--type-subtask);}
+  .card[data-type="bug"]{border-left-color:var(--type-bug);}
+  .card-top{display:flex;align-items:center;gap:6px;margin-bottom:6px;}
+  .card-key{font-size:11px;color:var(--text-faint);font-weight:600;font-family:var(--font-mono);letter-spacing:.01em;}
+  .card-summary{font-size:13px;line-height:1.4;margin-bottom:8px;color:var(--text);}
+  .card-labels{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;}
+  .card-footer{display:flex;align-items:center;justify-content:space-between;}
+  .add-issue-btn{
+    display:flex;align-items:center;gap:6px;padding:8px 6px;color:var(--text-muted);font-size:13px;
+    border-radius:6px;background:transparent;border:none;text-align:left;
+  }
+  .add-issue-btn:hover{background:rgba(127,127,127,.12);}
+
+  /* ---------- Backlog / list ---------- */
+  .backlog-wrap{padding:0 24px 40px 24px;display:flex;flex-direction:column;gap:20px;}
+  .group{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+  .group-header{
+    display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--bg);
+    border-bottom:1px solid var(--border);cursor:pointer;
+  }
+  .chevron{width:14px;height:14px;color:var(--text-faint);transition:transform .15s ease;flex-shrink:0;}
+  .group.collapsed .chevron{transform:rotate(-90deg);}
+  .group.collapsed .row-list{display:none;}
+  .group-title{font-weight:600;font-size:14px;}
+  .group-sub{font-size:12px;color:var(--text-muted);}
+  .group-header-spacer{flex:1;}
+
+  .row-list{display:flex;flex-direction:column;}
+  .row{
+    display:flex;align-items:center;gap:10px;padding:9px 14px 9px 11px;border-bottom:1px solid var(--border);
+    border-left:3px solid transparent;cursor:pointer;
+  }
+  .row:last-child{border-bottom:none;}
+  .row:hover{background:var(--bg);}
+  .row[data-type="epic"]{border-left-color:var(--type-epic);}
+  .row[data-type="story"]{border-left-color:var(--type-story);}
+  .row[data-type="task"]{border-left-color:var(--type-task);}
+  .row[data-type="subtask"]{border-left-color:var(--type-subtask);}
+  .row[data-type="bug"]{border-left-color:var(--type-bug);}
+  .row-indent{width:15px;flex-shrink:0;}
+  .row-key{font-size:12px;color:var(--text-faint);font-weight:600;font-family:var(--font-mono);letter-spacing:.01em;width:56px;flex-shrink:0;}
+  .row-summary{flex:1;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .row-labels{display:flex;gap:4px;flex-shrink:0;}
+  .row-right{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+  .row-actions{display:flex;align-items:center;gap:2px;flex-shrink:0;margin-left:8px;}
+
+  .epic-header{border-left:4px solid var(--epic-color,#8F7EE7);}
+  .epic-chip{
+    font-size:11px;font-weight:700;color:#fff;background:var(--epic-color,#8F7EE7);
+    border-radius:4px;padding:2px 6px;
+  }
+
+  /* ---------- Issue detail slide-over ---------- */
+  .overlay{
+    position:fixed;inset:0;background:var(--overlay);opacity:0;pointer-events:none;
+    transition:opacity .15s ease;z-index:30;
+  }
+  .overlay.open{opacity:1;pointer-events:auto;}
+  .detail-panel{
+    position:fixed;top:0;right:0;height:100%;width:420px;background:var(--surface);
+    box-shadow:var(--panel-shadow);transform:translateX(100%);transition:transform .18s ease;
+    z-index:31;display:flex;flex-direction:column;
+  }
+  .detail-panel.open{transform:translateX(0);}
+  .detail-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+  .detail-close{margin-left:auto;}
+  .detail-body{padding:20px;overflow-y:auto;flex:1;}
+  .detail-summary{font-size:18px;font-weight:600;margin:10px 0 18px 0;}
+  .detail-field{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+  .detail-field-label{width:100px;font-size:12px;color:var(--text-muted);flex-shrink:0;}
+  .detail-desc{font-size:13px;color:var(--text-muted);line-height:1.6;background:var(--bg);border-radius:6px;padding:12px;margin-top:6px;}
+  .comment{margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
+  .comment-input{
+    width:100%;border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-size:13px;
+    font-family:inherit;resize:none;color:var(--text-faint);
+  }
+
+  .view{display:none;}
+  .view.active{display:block;}
+
+  svg{display:block;}
+
+  /* ---------- Theme toggle ---------- */
+  .theme-toggle .icon-sun{display:none;}
+  .theme-toggle .icon-moon{display:block;}
+  html[data-theme="dark"] .theme-toggle .icon-sun{display:block;}
+  html[data-theme="dark"] .theme-toggle .icon-moon{display:none;}
+
+  /* ---------- Settings ---------- */
+  .settings-intro{color:var(--text-muted);font-size:13px;line-height:1.5;margin:16px 24px 0 24px;max-width:640px;}
+  .settings-group{margin:16px 24px 0 24px;}
+  .setting-row{
+    display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border);
+  }
+  .setting-row:last-child{border-bottom:none;}
+  .drag-handle{color:var(--text-faint);cursor:grab;flex-shrink:0;display:flex;}
+  .setting-name{font-size:13px;font-weight:500;flex:1;}
+  .setting-meta{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+  .category-tag{
+    font-size:11px;font-weight:600;color:var(--text-muted);background:var(--bg);
+    border:1px solid var(--border);border-radius:10px;padding:2px 8px;white-space:nowrap;
+  }
+  .badge-default{
+    font-size:11px;font-weight:600;color:var(--text-muted);background:var(--bg);
+    border-radius:10px;padding:2px 8px;white-space:nowrap;
+  }
+  .badge-nosprint{
+    font-size:11px;font-weight:600;color:var(--brand);background:var(--brand-bg);
+    border-radius:10px;padding:2px 8px;white-space:nowrap;
+  }
+  .icon-btn-sm{
+    width:28px;height:28px;border-radius:6px;border:none;background:transparent;color:var(--text-muted);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .icon-btn-sm:hover{background:var(--status-blocked-bg);color:var(--status-blocked-text);}
+  .icon-btn-sm.safe:hover{background:var(--brand-bg);color:var(--brand);}
+  #detail-delete-btn:hover{background:var(--status-blocked-bg);color:var(--status-blocked-text);}
+  .icon-btn-sm[disabled]{color:var(--text-faint);cursor:not-allowed;opacity:.5;}
+  .icon-btn-sm[disabled]:hover{background:transparent;color:var(--text-faint);}
+
+  .add-row-form{
+    display:none;align-items:center;gap:8px;padding:12px 14px;background:var(--bg);
+    border-top:1px solid var(--border);flex-wrap:wrap;
+  }
+  .add-row-form.open{display:flex;}
+  .add-row-form input[type="text"], .add-row-form select{
+    border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:6px;
+    padding:6px 10px;font-size:13px;font-family:inherit;
+  }
+  .color-picker{display:flex;gap:6px;align-items:center;}
+  .color-swatch{
+    width:22px;height:22px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0;
+  }
+  .color-swatch.selected{border-color:var(--text);}
+  .toggle-label{font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px;}
+  .toggle-switch{
+    position:relative;width:34px;height:20px;border-radius:10px;background:var(--border);border:none;
+    cursor:pointer;flex-shrink:0;padding:0;
+  }
+  .toggle-switch::after{
+    content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;
+    background:var(--surface);transition:transform var(--t);
+  }
+  .toggle-switch.on{background:var(--brand);}
+  .toggle-switch.on::after{transform:translateX(14px);}
+
+  /* ---------- Modals (Create issue / Create sprint / Complete sprint) ---------- */
+  .modal-overlay{
+    position:fixed;inset:0;background:var(--overlay);opacity:0;pointer-events:none;
+    transition:opacity .15s ease;z-index:40;display:flex;align-items:center;justify-content:center;padding:24px;
+  }
+  .modal-overlay.open{opacity:1;pointer-events:auto;}
+  .modal{
+    background:var(--surface);border-radius:10px;box-shadow:var(--panel-shadow);width:480px;max-width:100%;
+    max-height:86vh;overflow-y:auto;transform:translateY(-8px) scale(.98);opacity:0;
+    transition:transform .15s ease, opacity .15s ease;
+  }
+  .modal-overlay.open .modal{transform:translateY(0) scale(1);opacity:1;}
+  .modal-header{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+  .modal-title{font-size:16px;font-weight:600;flex:1;}
+  .modal-body{padding:20px;display:flex;flex-direction:column;gap:14px;}
+  .modal-footer{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;}
+  .field-label{font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:6px;display:block;}
+  .field-input, .field-select, .field-textarea{
+    width:100%;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:6px;
+    padding:8px 10px;font-size:13px;font-family:inherit;
+  }
+  .field-textarea{resize:vertical;min-height:70px;}
+  .field-row{display:flex;gap:12px;}
+  .field-row > div{flex:1;}
+  .type-select-row{display:flex;gap:6px;flex-wrap:wrap;}
+  .type-select-opt{
+    display:flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;
+    cursor:pointer;font-size:13px;background:var(--surface);color:var(--text);
+  }
+  .type-select-opt.selected{border-color:var(--brand);background:var(--brand-bg);color:var(--brand);}
+
+  /* ---------- Sprint state badges + empty/history states ---------- */
+  .sprint-state-badge{font-size:10px;font-weight:700;letter-spacing:.03em;border-radius:4px;padding:2px 7px;white-space:nowrap;}
+  .sprint-state-badge.state-planned{background:var(--border);color:var(--text-muted);}
+  .sprint-state-badge.state-active{background:var(--status-inprogress-bg);color:var(--status-inprogress-text);}
+  .sprint-state-badge.state-completed{background:var(--status-done-bg);color:var(--status-done-text);}
+  .empty-hint{padding:16px 14px;color:var(--text-muted);font-size:13px;}
+  .carried-note{
+    font-size:11px;font-weight:600;color:var(--text-muted);background:var(--bg);border:1px solid var(--border);
+    border-radius:10px;padding:2px 8px;white-space:nowrap;
+  }
+
+  /* ---------- Detail panel: editable status + description, real comments ---------- */
+  .status-select-wrap{position:relative;}
+  .status-pill-btn{border:none;background:transparent;padding:0;border-radius:4px;}
+  .status-dropdown{
+    position:absolute;top:calc(100% + 6px);left:0;z-index:32;min-width:150px;
+    background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow-hover);
+    padding:6px;display:none;flex-direction:column;gap:2px;
+  }
+  .status-dropdown.open{display:flex;}
+  .status-dropdown button{background:transparent;border:none;padding:4px 6px;border-radius:6px;text-align:left;}
+  .status-dropdown button:hover{background:var(--bg);}
+  .detail-desc{cursor:pointer;}
+  .detail-desc:hover{box-shadow:0 0 0 1px var(--border) inset;}
+  .detail-desc-edit{display:none;margin-top:6px;}
+  .detail-desc-edit.open{display:block;}
+  .detail-desc-actions{display:flex;gap:8px;margin-top:8px;}
+  .comment-list{display:flex;flex-direction:column;gap:10px;margin-bottom:10px;}
+  .comment-item{background:var(--bg);border-radius:6px;padding:10px 12px;font-size:13px;line-height:1.5;}
+  .comment-item-meta{font-size:11px;color:var(--text-faint);margin-bottom:4px;}
+
+  .sprint-field-wrap{position:relative;}
+  .sprint-field-btn{
+    border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:6px;
+    padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;
+  }
+  .sprint-field-btn:hover{background:var(--bg);}
+  .sprint-dropdown{
+    position:absolute;top:calc(100% + 6px);left:0;z-index:32;min-width:150px;max-height:220px;overflow-y:auto;
+    background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow-hover);
+    padding:6px;display:none;flex-direction:column;gap:2px;
+  }
+  .sprint-dropdown.open{display:flex;}
+  .sprint-dropdown button{background:transparent;border:none;padding:6px 8px;border-radius:6px;text-align:left;font-size:13px;color:var(--text);}
+  .sprint-dropdown button:hover{background:var(--bg);}
+
+  /* ---------- Drag and drop: board cards (status) + backlog rows (sprint) ---------- */
+  .card[draggable="true"], .row[draggable="true"]{cursor:grab;}
+  .card.dragging, .row.dragging{opacity:.4;}
+  .board-column.drag-over{outline:2px dashed var(--brand);outline-offset:2px;}
+  .row-list.drag-over{outline:2px dashed var(--brand);outline-offset:-2px;}
+</style>
+<script>
+  // Applied synchronously, before first paint, so the page never flashes the wrong theme.
+  (function(){
+    try{
+      var stored = localStorage.getItem('lj-theme');
+      var theme = stored || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', theme);
+    }catch(e){}
+  })();
+</script>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div class="topbar-section start">
+    <div class="logo"><span class="logo-mark">LJ</span> Local Jira</div>
+  </div>
+  <div class="topbar-section center">
+    <div class="global-search">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <input type="text" placeholder="Search issues…">
+    </div>
+  </div>
+  <div class="topbar-section end">
+    <button class="icon-btn theme-toggle" id="theme-toggle" title="Toggle color theme" aria-label="Toggle color theme">
+      <svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      <svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+    <button class="icon-btn" id="settings-btn" title="Settings" aria-label="Settings">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- Project header -->
+<div class="project-header" id="project-header">
+  <div class="project-title-row">
+    <div class="project-avatar">W</div>
+    <div class="project-title">Website Redesign</div>
+    <div class="project-key-chip">WEB</div>
+  </div>
+  <div class="tabs">
+    <div class="tab active" data-view="board">Board</div>
+    <div class="tab" data-view="backlog">Backlog</div>
+    <div class="tab" data-view="epics-stories">Epics &amp; Stories</div>
+    <div class="tab" data-view="sprints">Sprints</div>
+  </div>
+</div>
+
+<!-- Settings header (global — not scoped to a project) -->
+<div class="project-header" id="settings-header" style="display:none">
+  <div class="project-title-row">
+    <button class="icon-btn" id="settings-back" title="Back to project" aria-label="Back to project">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    </button>
+    <div class="project-title">Settings</div>
+  </div>
+  <div class="tabs">
+    <div class="tab active" data-view="settings-statuses">Statuses</div>
+    <div class="tab" data-view="settings-issuetypes">Issue Types</div>
+  </div>
+</div>
+
+<!-- ============ BOARD VIEW ============ -->
+<div class="view active" id="view-board">
+  <div class="toolbar">
+    <div class="search-input">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <input type="text" id="board-search" placeholder="Filter cards…">
+    </div>
+    <div class="filter-wrap" data-facet="type">
+      <button type="button" class="chip-filter">Type<span class="filter-count"></span> ▾</button>
+      <div class="filter-dropdown">
+        <label><input type="checkbox" value="epic"> Epic</label>
+        <label><input type="checkbox" value="story"> Story</label>
+        <label><input type="checkbox" value="task"> Task</label>
+        <label><input type="checkbox" value="subtask"> Subtask</label>
+        <label><input type="checkbox" value="bug"> Bug</label>
+      </div>
+    </div>
+    <div class="filter-wrap" data-facet="label">
+      <button type="button" class="chip-filter">Label<span class="filter-count"></span> ▾</button>
+      <div class="filter-dropdown">
+        <label><input type="checkbox" value="frontend"> frontend</label>
+        <label><input type="checkbox" value="checkout"> checkout</label>
+        <label><input type="checkbox" value="backend"> backend</label>
+        <label><input type="checkbox" value="design"> design</label>
+        <label><input type="checkbox" value="infra"> infra</label>
+        <label><input type="checkbox" value="docs"> docs</label>
+      </div>
+    </div>
+    <div class="toolbar-spacer"></div>
+    <div class="sprint-meta">Sprint 4 · Aug 5 – Aug 18 · <strong style="color:var(--text)">4 days left</strong></div>
+    <button class="btn" onclick="completeSprint(document.getElementById('sprint-4-group'))">Complete sprint</button>
+  </div>
+
+  <div class="board-columns">
+    <!-- To Do -->
+    <div class="board-column" id="column-todo">
+      <div class="board-column-header">To Do <span class="column-count">3</span></div>
+
+      <div class="card" data-key="WEB-6" data-sprint="sprint-4" onclick="openDetail(this)"
+           data-summary="Logo misaligned on mobile" data-type="bug" data-priority="high" data-points="2"
+           data-labels="frontend" data-status="To Do">
+        <div class="card-top">
+          <span class="type-icon type-bug" title="Bug">🐞</span>
+          <span class="card-key">WEB-6</span>
+        </div>
+        <div class="card-summary">Logo misaligned on mobile</div>
+        <div class="card-labels"><span class="label-chip">frontend</span></div>
+        <div class="card-footer">
+          <span title="Priority: High">🔺</span>
+          <span class="points-badge">2</span>
+        </div>
+      </div>
+
+      <div class="card" data-key="WEB-12" data-sprint="sprint-4" onclick="openDetail(this)"
+           data-summary="Cart total rounding error" data-type="bug" data-priority="urgent" data-points="3"
+           data-labels="checkout" data-status="To Do">
+        <div class="card-top">
+          <span class="type-icon type-bug" title="Bug">🐞</span>
+          <span class="card-key">WEB-12</span>
+        </div>
+        <div class="card-summary">Cart total rounding error</div>
+        <div class="card-labels"><span class="label-chip">checkout</span></div>
+        <div class="card-footer">
+          <span title="Priority: Urgent">🔴</span>
+          <span class="points-badge">3</span>
+        </div>
+      </div>
+
+      <div class="card" data-key="WEB-16" data-sprint="sprint-4" onclick="openDetail(this)"
+           data-summary="Favicon missing" data-type="bug" data-priority="low" data-points="1"
+           data-labels="" data-status="To Do">
+        <div class="card-top">
+          <span class="type-icon type-bug" title="Bug">🐞</span>
+          <span class="card-key">WEB-16</span>
+        </div>
+        <div class="card-summary">Favicon missing</div>
+        <div class="card-footer">
+          <span title="Priority: Low">🔵</span>
+          <span class="points-badge">1</span>
+        </div>
+      </div>
+
+      <button class="add-issue-btn" onclick="openCreateIssue('board-todo')">+ Add issue</button>
+    </div>
+
+    <!-- In Progress -->
+    <div class="board-column" id="column-inprogress">
+      <div class="board-column-header">In Progress <span class="column-count">2</span></div>
+
+      <div class="card" data-key="WEB-5" data-sprint="sprint-4" onclick="openDetail(this)"
+           data-summary="Implement responsive nav" data-type="task" data-priority="medium" data-points="5"
+           data-labels="frontend" data-status="In Progress">
+        <div class="card-top">
+          <span class="type-icon type-task" title="Task">✔</span>
+          <span class="card-key">WEB-5</span>
+        </div>
+        <div class="card-summary">Implement responsive nav</div>
+        <div class="card-labels"><span class="label-chip">frontend</span></div>
+        <div class="card-footer">
+          <span title="Priority: Medium">🟠</span>
+          <span class="points-badge">5</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Blocked -->
+    <div class="board-column" id="column-blocked">
+      <div class="board-column-header">Blocked <span class="column-count">1</span></div>
+
+      <div class="card" data-key="WEB-11" data-sprint="sprint-4" onclick="openDetail(this)"
+           data-summary="Integrate Stripe webhook" data-type="task" data-priority="urgent" data-points="5"
+           data-labels="checkout,backend" data-status="Blocked">
+        <div class="card-top">
+          <span class="type-icon type-task" title="Task">✔</span>
+          <span class="card-key">WEB-11</span>
+        </div>
+        <div class="card-summary">Integrate Stripe webhook</div>
+        <div class="card-labels"><span class="label-chip">checkout</span><span class="label-chip">backend</span></div>
+        <div class="card-footer">
+          <span title="Priority: Urgent">🔴</span>
+          <span class="points-badge">5</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Done -->
+    <div class="board-column" id="column-done">
+      <div class="board-column-header">Done <span class="column-count">3</span></div>
+
+      <div class="card" data-key="WEB-7" data-sprint="sprint-4" onclick="openDetail(this)"
+           data-summary="Export hero assets from Figma" data-type="subtask" data-priority="low" data-points="1"
+           data-labels="design" data-status="Done">
+        <div class="card-top">
+          <span class="type-icon type-subtask" title="Subtask">↳</span>
+          <span class="card-key">WEB-7</span>
+        </div>
+        <div class="card-summary">Export hero assets from Figma</div>
+        <div class="card-labels"><span class="label-chip">design</span></div>
+        <div class="card-footer">
+          <span title="Priority: Low">🔵</span>
+          <span class="points-badge">1</span>
+        </div>
+      </div>
+
+      <div class="card" data-key="WEB-15" data-sprint="sprint-4" onclick="openDetail(this)"
+           data-summary="Set up CI pipeline" data-type="task" data-priority="medium" data-points="3"
+           data-labels="infra" data-status="Done">
+        <div class="card-top">
+          <span class="type-icon type-task" title="Task">✔</span>
+          <span class="card-key">WEB-15</span>
+        </div>
+        <div class="card-summary">Set up CI pipeline</div>
+        <div class="card-labels"><span class="label-chip">infra</span></div>
+        <div class="card-footer">
+          <span title="Priority: Medium">🟠</span>
+          <span class="points-badge">3</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ BACKLOG VIEW ============ -->
+<div class="view" id="view-backlog">
+  <div class="toolbar">
+    <div class="search-input">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <input type="text" id="backlog-search" placeholder="Filter backlog…">
+    </div>
+    <div class="filter-wrap" data-facet="type">
+      <button type="button" class="chip-filter">Type<span class="filter-count"></span> ▾</button>
+      <div class="filter-dropdown">
+        <label><input type="checkbox" value="epic"> Epic</label>
+        <label><input type="checkbox" value="story"> Story</label>
+        <label><input type="checkbox" value="task"> Task</label>
+        <label><input type="checkbox" value="subtask"> Subtask</label>
+        <label><input type="checkbox" value="bug"> Bug</label>
+      </div>
+    </div>
+    <div class="filter-wrap" data-facet="label">
+      <button type="button" class="chip-filter">Label<span class="filter-count"></span> ▾</button>
+      <div class="filter-dropdown">
+        <label><input type="checkbox" value="frontend"> frontend</label>
+        <label><input type="checkbox" value="checkout"> checkout</label>
+        <label><input type="checkbox" value="backend"> backend</label>
+        <label><input type="checkbox" value="design"> design</label>
+        <label><input type="checkbox" value="infra"> infra</label>
+        <label><input type="checkbox" value="docs"> docs</label>
+      </div>
+    </div>
+    <div class="filter-wrap" data-facet="priority">
+      <button type="button" class="chip-filter">Priority<span class="filter-count"></span> ▾</button>
+      <div class="filter-dropdown">
+        <label><input type="checkbox" value="urgent"> Urgent</label>
+        <label><input type="checkbox" value="high"> High</label>
+        <label><input type="checkbox" value="medium"> Medium</label>
+        <label><input type="checkbox" value="low"> Low</label>
+      </div>
+    </div>
+    <div class="toolbar-spacer"></div>
+    <button class="btn" onclick="openCreateSprint()">+ Create sprint</button>
+  </div>
+
+  <div class="backlog-wrap">
+
+    <!-- Sprint 4 group -->
+    <div class="group" id="sprint-4-group" data-sprint-id="sprint-4" data-state="active" data-start="2026-08-05" data-end="2026-08-18">
+      <div class="group-header" onclick="toggleGroup(this)">
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+        <span class="group-title">Sprint 4</span>
+        <span class="sprint-state-badge state-active">ACTIVE</span>
+        <span class="group-sub"><span class="group-sub-dates">Aug 5 – Aug 18</span> · <span class="group-sub-count">9 issues · 32 points</span></span>
+        <div class="group-header-spacer"></div>
+        <button class="btn" onclick="event.stopPropagation(); completeSprint(this.closest('.group'))">Complete sprint</button>
+      </div>
+      <div class="row-list" id="sprint-4-rowlist">
+        <div class="row" onclick="openDetail(this)" data-key="WEB-5" data-summary="Implement responsive nav" data-type="task" data-priority="medium" data-points="5" data-labels="frontend" data-status="In Progress">
+          <span class="row-indent"></span>
+          <span class="type-icon type-task">✔</span>
+          <span class="row-key">WEB-5</span>
+          <span class="row-summary">Implement responsive nav</span>
+          <div class="row-labels"><span class="label-chip">frontend</span></div>
+          <div class="row-right">
+            <span title="Priority: Medium">🟠</span>
+            <span class="points-badge">5</span>
+            <span class="status-pill status-inprogress">IN PROGRESS</span>
+          </div>
+        </div>
+        <div class="row" onclick="openDetail(this)" data-key="WEB-6" data-summary="Logo misaligned on mobile" data-type="bug" data-priority="high" data-points="2" data-labels="frontend" data-status="To Do">
+          <span class="row-indent"></span>
+          <span class="type-icon type-bug">🐞</span>
+          <span class="row-key">WEB-6</span>
+          <span class="row-summary">Logo misaligned on mobile</span>
+          <div class="row-labels"><span class="label-chip">frontend</span></div>
+          <div class="row-right">
+            <span title="Priority: High">🔺</span>
+            <span class="points-badge">2</span>
+            <span class="status-pill status-todo">TO DO</span>
+          </div>
+        </div>
+        <div class="row" onclick="openDetail(this)" data-key="WEB-7" data-summary="Export hero assets from Figma" data-type="subtask" data-priority="low" data-points="1" data-labels="design" data-status="Done">
+          <span class="row-indent">↳</span>
+          <span class="type-icon type-subtask">↳</span>
+          <span class="row-key">WEB-7</span>
+          <span class="row-summary">Export hero assets from Figma</span>
+          <div class="row-labels"><span class="label-chip">design</span></div>
+          <div class="row-right">
+            <span title="Priority: Low">🔵</span>
+            <span class="points-badge">1</span>
+            <span class="status-pill status-done">DONE</span>
+          </div>
+        </div>
+        <div class="row" onclick="openDetail(this)" data-key="WEB-11" data-summary="Integrate Stripe webhook" data-type="task" data-priority="urgent" data-points="5" data-labels="checkout,backend" data-status="Blocked">
+          <span class="row-indent"></span>
+          <span class="type-icon type-task">✔</span>
+          <span class="row-key">WEB-11</span>
+          <span class="row-summary">Integrate Stripe webhook</span>
+          <div class="row-labels"><span class="label-chip">checkout</span><span class="label-chip">backend</span></div>
+          <div class="row-right">
+            <span title="Priority: Urgent">🔴</span>
+            <span class="points-badge">5</span>
+            <span class="status-pill status-blocked">BLOCKED</span>
+          </div>
+        </div>
+        <div class="row" onclick="openDetail(this)" data-key="WEB-12" data-summary="Cart total rounding error" data-type="bug" data-priority="urgent" data-points="3" data-labels="checkout" data-status="To Do">
+          <span class="row-indent"></span>
+          <span class="type-icon type-bug">🐞</span>
+          <span class="row-key">WEB-12</span>
+          <span class="row-summary">Cart total rounding error</span>
+          <div class="row-labels"><span class="label-chip">checkout</span></div>
+          <div class="row-right">
+            <span title="Priority: Urgent">🔴</span>
+            <span class="points-badge">3</span>
+            <span class="status-pill status-todo">TO DO</span>
+          </div>
+        </div>
+        <div class="row" onclick="openDetail(this)" data-key="WEB-15" data-summary="Set up CI pipeline" data-type="task" data-priority="medium" data-points="3" data-labels="infra" data-status="Done">
+          <span class="row-indent"></span>
+          <span class="type-icon type-task">✔</span>
+          <span class="row-key">WEB-15</span>
+          <span class="row-summary">Set up CI pipeline</span>
+          <div class="row-labels"><span class="label-chip">infra</span></div>
+          <div class="row-right">
+            <span title="Priority: Medium">🟠</span>
+            <span class="points-badge">3</span>
+            <span class="status-pill status-done">DONE</span>
+          </div>
+        </div>
+        <div class="row" onclick="openDetail(this)" data-key="WEB-16" data-summary="Favicon missing" data-type="bug" data-priority="low" data-points="1" data-labels="" data-status="To Do">
+          <span class="row-indent"></span>
+          <span class="type-icon type-bug">🐞</span>
+          <span class="row-key">WEB-16</span>
+          <span class="row-summary">Favicon missing</span>
+          <div class="row-labels"></div>
+          <div class="row-right">
+            <span title="Priority: Low">🔵</span>
+            <span class="points-badge">1</span>
+            <span class="status-pill status-todo">TO DO</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Backlog: grouped by epic -->
+    <div class="group" id="backlog-group">
+      <div class="group-header" onclick="toggleGroup(this)">
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+        <span class="group-title">Backlog</span>
+        <span class="group-sub"><span class="group-sub-count">4 issues · 12 points</span></span>
+        <div class="group-header-spacer"></div>
+        <button class="btn" onclick="event.stopPropagation(); openCreateIssue('backlog')">+ Create issue</button>
+      </div>
+      <div class="row-list" id="backlog-group-rowlist">
+        <div class="row" onclick="openDetail(this)" data-key="WEB-20" data-summary="Write onboarding docs" data-type="task" data-priority="low" data-points="2" data-labels="docs" data-status="To Do">
+          <span class="row-indent"></span>
+          <span class="type-icon type-task">✔</span>
+          <span class="row-key">WEB-20</span>
+          <span class="row-summary">Write onboarding docs</span>
+          <div class="row-labels"><span class="label-chip">docs</span></div>
+          <div class="row-right">
+            <span title="Priority: Low">🔵</span>
+            <span class="points-badge">2</span>
+            <span class="status-pill status-todo">TO DO</span>
+          </div>
+        </div>
+        <div class="row" onclick="openDetail(this)" data-key="WEB-22" data-summary="Add search autocomplete" data-type="task" data-priority="medium" data-points="1" data-labels="frontend" data-status="To Do">
+          <span class="row-indent"></span>
+          <span class="type-icon type-task">✔</span>
+          <span class="row-key">WEB-22</span>
+          <span class="row-summary">Add search autocomplete</span>
+          <div class="row-labels"><span class="label-chip">frontend</span></div>
+          <div class="row-right">
+            <span title="Priority: Medium">🟠</span>
+            <span class="points-badge">1</span>
+            <span class="status-pill status-todo">TO DO</span>
+          </div>
+        </div>
+        <div class="row" onclick="openDetail(this)" data-key="WEB-23" data-summary="404 page styling broken" data-type="bug" data-priority="low" data-points="1" data-labels="frontend" data-status="To Do">
+          <span class="row-indent"></span>
+          <span class="type-icon type-bug">🐞</span>
+          <span class="row-key">WEB-23</span>
+          <span class="row-summary">404 page styling broken</span>
+          <div class="row-labels"><span class="label-chip">frontend</span></div>
+          <div class="row-right">
+            <span title="Priority: Low">🔵</span>
+            <span class="points-badge">1</span>
+            <span class="status-pill status-todo">TO DO</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============ EPICS & STORIES VIEW ============ -->
+<div class="view" id="view-epics-stories">
+  <p class="settings-intro">Epics and Stories are managed here, separately from the Task/Bug backlog — they don't get scheduled into sprints. Click one to view or edit its description and comments; use the icons to edit its fields or delete it.</p>
+
+  <div class="backlog-wrap" style="padding-top:0;">
+    <div class="group" id="epics-group">
+      <div class="group-header" onclick="toggleGroup(this)">
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+        <span class="group-title">Epics</span>
+        <span class="group-sub"><span class="group-sub-count">1 issue · 0 points</span></span>
+        <div class="group-header-spacer"></div>
+        <button class="btn" onclick="event.stopPropagation(); openCreateIssue('epics-stories','epic')">+ Create epic</button>
+      </div>
+      <div class="row-list" id="epics-group-rowlist">
+        <div class="row" onclick="openDetail(this)" data-key="WEB-30" data-summary="Homepage Revamp" data-type="epic" data-priority="medium" data-points="" data-labels="frontend,design" data-status="In Progress">
+          <span class="row-indent"></span>
+          <span class="type-icon type-epic">⚡</span>
+          <span class="row-key">WEB-30</span>
+          <span class="row-summary">Homepage Revamp</span>
+          <div class="row-labels"><span class="label-chip">frontend</span><span class="label-chip">design</span></div>
+          <div class="row-right">
+            <span title="Priority: Medium">🟠</span>
+            <span class="points-badge">—</span>
+            <span class="status-pill status-inprogress">IN PROGRESS</span>
+          </div>
+          <div class="row-actions">
+            <button class="icon-btn-sm safe" title="Edit" onclick="event.stopPropagation(); openEditIssue('WEB-30')">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            </button>
+            <button class="icon-btn-sm" title="Delete" onclick="event.stopPropagation(); deleteIssue('WEB-30')">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/><path d="M10 11v6M14 11v6"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="group" id="stories-group">
+      <div class="group-header" onclick="toggleGroup(this)">
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+        <span class="group-title">Stories</span>
+        <span class="group-sub"><span class="group-sub-count">4 issues · 21 points</span></span>
+        <div class="group-header-spacer"></div>
+        <button class="btn" onclick="event.stopPropagation(); openCreateIssue('epics-stories','story')">+ Create story</button>
+      </div>
+      <div class="row-list" id="stories-group-rowlist">
+        <div class="row" onclick="openDetail(this)" data-key="WEB-4" data-summary="Design hero section" data-type="story" data-priority="medium" data-points="5" data-labels="design" data-status="Done">
+          <span class="row-indent"></span>
+          <span class="type-icon type-story">🔖</span>
+          <span class="row-key">WEB-4</span>
+          <span class="row-summary">Design hero section</span>
+          <div class="row-labels"><span class="label-chip">design</span></div>
+          <div class="row-right">
+            <span title="Priority: Medium">🟠</span>
+            <span class="points-badge">5</span>
+            <span class="status-pill status-done">DONE</span>
+          </div>
+          <div class="row-actions">
+            <button class="icon-btn-sm safe" title="Edit" onclick="event.stopPropagation(); openEditIssue('WEB-4')">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            </button>
+            <button class="icon-btn-sm" title="Delete" onclick="event.stopPropagation(); deleteIssue('WEB-4')">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/><path d="M10 11v6M14 11v6"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="row" onclick="openDetail(this)" data-key="WEB-10" data-summary="Add saved payment methods" data-type="story" data-priority="high" data-points="8" data-labels="checkout,backend" data-status="In Progress">
+          <span class="row-indent"></span>
+          <span class="type-icon type-story">🔖</span>
+          <span class="row-key">WEB-10</span>
+          <span class="row-summary">Add saved payment methods</span>
+          <div class="row-labels"><span class="label-chip">checkout</span><span class="label-chip">backend</span></div>
+          <div class="row-right">
+            <span title="Priority: High">🔺</span>
+            <span class="points-badge">8</span>
+            <span class="status-pill status-inprogress">IN PROGRESS</span>
+          </div>
+          <div class="row-actions">
+            <button class="icon-btn-sm safe" title="Edit" onclick="event.stopPropagation(); openEditIssue('WEB-10')">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            </button>
+            <button class="icon-btn-sm" title="Delete" onclick="event.stopPropagation(); deleteIssue('WEB-10')">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/><path d="M10 11v6M14 11v6"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="row" onclick="openDetail(this)" data-key="WEB-21" data-summary="Dark mode support" data-type="story" data-priority="medium" data-points="5" data-labels="frontend" data-status="To Do">
+          <span class="row-indent"></span>
+          <span class="type-icon type-story">🔖</span>
+          <span class="row-key">WEB-21</span>
+          <span class="row-summary">Dark mode support</span>
+          <div class="row-labels"><span class="label-chip">frontend</span></div>
+          <div class="row-right">
+            <span title="Priority: Medium">🟠</span>
+            <span class="points-badge">5</span>
+            <span class="status-pill status-todo">TO DO</span>
+          </div>
+          <div class="row-actions">
+            <button class="icon-btn-sm safe" title="Edit" onclick="event.stopPropagation(); openEditIssue('WEB-21')">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            </button>
+            <button class="icon-btn-sm" title="Delete" onclick="event.stopPropagation(); deleteIssue('WEB-21')">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/><path d="M10 11v6M14 11v6"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="row" onclick="openDetail(this)" data-key="WEB-24" data-summary="Add newsletter signup" data-type="story" data-priority="low" data-points="3" data-labels="frontend" data-status="To Do">
+          <span class="row-indent"></span>
+          <span class="type-icon type-story">🔖</span>
+          <span class="row-key">WEB-24</span>
+          <span class="row-summary">Add newsletter signup</span>
+          <div class="row-labels"><span class="label-chip">frontend</span></div>
+          <div class="row-right">
+            <span title="Priority: Low">🔵</span>
+            <span class="points-badge">3</span>
+            <span class="status-pill status-todo">TO DO</span>
+          </div>
+          <div class="row-actions">
+            <button class="icon-btn-sm safe" title="Edit" onclick="event.stopPropagation(); openEditIssue('WEB-24')">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            </button>
+            <button class="icon-btn-sm" title="Delete" onclick="event.stopPropagation(); deleteIssue('WEB-24')">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/><path d="M10 11v6M14 11v6"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SPRINTS / HISTORY VIEW ============ -->
+<div class="view" id="view-sprints">
+  <p class="settings-intro" id="sprints-current-summary">Loading…</p>
+  <p class="settings-intro" style="margin-top:0;">Completed sprints land here automatically — their issues are kept exactly as they were, including which ones didn't finish in time. Nothing is deleted when a sprint completes.</p>
+  <div id="sprint-history-list" style="margin:16px 24px 40px 24px;display:flex;flex-direction:column;gap:20px;">
+
+    <!-- Seeded example: a sprint that already completed before this session started -->
+    <div class="group" data-sprint-id="sprint-3" data-state="completed" data-start="2026-07-22" data-end="2026-08-04">
+      <div class="group-header" onclick="toggleGroup(this)">
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+        <span class="group-title">Sprint 3</span>
+        <span class="sprint-state-badge state-completed">COMPLETED</span>
+        <span class="group-sub"><span class="group-sub-dates">Jul 22 – Aug 4</span> · <span class="group-sub-count">5 issues · 13 points</span></span>
+      </div>
+      <div class="row-list">
+        <div class="row" onclick="openDetail(this)" data-key="WEB-1" data-summary="Set up project repo" data-type="task" data-priority="medium" data-points="2" data-labels="infra" data-status="Done">
+          <span class="row-indent"></span>
+          <span class="type-icon type-task">✔</span>
+          <span class="row-key">WEB-1</span>
+          <span class="row-summary">Set up project repo</span>
+          <div class="row-labels"><span class="label-chip">infra</span></div>
+          <div class="row-right">
+            <span title="Priority: Medium">🟠</span>
+            <span class="points-badge">2</span>
+            <span class="status-pill status-done">DONE</span>
+          </div>
+        </div>
+        <div class="row" onclick="openDetail(this)" data-key="WEB-2" data-summary="Configure design tokens" data-type="task" data-priority="medium" data-points="3" data-labels="design" data-status="Done">
+          <span class="row-indent"></span>
+          <span class="type-icon type-task">✔</span>
+          <span class="row-key">WEB-2</span>
+          <span class="row-summary">Configure design tokens</span>
+          <div class="row-labels"><span class="label-chip">design</span></div>
+          <div class="row-right">
+            <span title="Priority: Medium">🟠</span>
+            <span class="points-badge">3</span>
+            <span class="status-pill status-done">DONE</span>
+          </div>
+        </div>
+        <div class="row" onclick="openDetail(this)" data-key="WEB-3" data-summary="Build reusable component library" data-type="story" data-priority="high" data-points="5" data-labels="frontend,design" data-status="Done">
+          <span class="row-indent"></span>
+          <span class="type-icon type-story">🔖</span>
+          <span class="row-key">WEB-3</span>
+          <span class="row-summary">Build reusable component library</span>
+          <div class="row-labels"><span class="label-chip">frontend</span><span class="label-chip">design</span></div>
+          <div class="row-right">
+            <span title="Priority: High">🔺</span>
+            <span class="points-badge">5</span>
+            <span class="status-pill status-done">DONE</span>
+          </div>
+        </div>
+        <div class="row" onclick="openDetail(this)" data-key="WEB-8" data-summary="Write engineering style guide" data-type="task" data-priority="low" data-points="1" data-labels="docs" data-status="Done">
+          <span class="row-indent"></span>
+          <span class="type-icon type-task">✔</span>
+          <span class="row-key">WEB-8</span>
+          <span class="row-summary">Write engineering style guide</span>
+          <div class="row-labels"><span class="label-chip">docs</span></div>
+          <div class="row-right">
+            <span title="Priority: Low">🔵</span>
+            <span class="points-badge">1</span>
+            <span class="status-pill status-done">DONE</span>
+          </div>
+        </div>
+        <div class="row" onclick="openDetail(this)" data-key="WEB-9" data-summary="Migrate legacy CSS to the new tokens" data-type="task" data-priority="medium" data-points="2" data-labels="frontend" data-status="In Progress">
+          <span class="row-indent"></span>
+          <span class="type-icon type-task">✔</span>
+          <span class="row-key">WEB-9</span>
+          <span class="row-summary">Migrate legacy CSS to the new tokens</span>
+          <div class="row-labels"><span class="label-chip">frontend</span></div>
+          <div class="row-right">
+            <span title="Priority: Medium">🟠</span>
+            <span class="points-badge">2</span>
+            <span class="carried-note">↪ carried to Sprint 4</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============ SETTINGS: STATUSES ============ -->
+<div class="view" id="view-settings-statuses">
+  <p class="settings-intro">Statuses are shared across every project — this same list sets the Kanban board's column order. Drag rows to reorder. A status still in use by an issue can't be deleted until those issues are reassigned.</p>
+  <div class="group settings-group">
+    <div class="row-list">
+      <div class="setting-row">
+        <span class="drag-handle" title="Drag to reorder"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg></span>
+        <span class="setting-name">To Do</span>
+        <div class="setting-meta">
+          <span class="category-tag">To do category</span>
+          <button class="icon-btn-sm" disabled title="Can't delete — used by 3 issues">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/><path d="M10 11v6M14 11v6"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <span class="drag-handle" title="Drag to reorder"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg></span>
+        <span class="setting-name">In Progress</span>
+        <div class="setting-meta">
+          <span class="category-tag">In progress category</span>
+          <button class="icon-btn-sm" disabled title="Can't delete — used by 2 issues">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/><path d="M10 11v6M14 11v6"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <span class="drag-handle" title="Drag to reorder"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg></span>
+        <span class="setting-name">Blocked</span>
+        <div class="setting-meta">
+          <span class="category-tag">In progress category</span>
+          <button class="icon-btn-sm" disabled title="Can't delete — used by 1 issue">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/><path d="M10 11v6M14 11v6"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <span class="drag-handle" title="Drag to reorder"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg></span>
+        <span class="setting-name">Done</span>
+        <div class="setting-meta">
+          <span class="category-tag">Done category</span>
+          <button class="icon-btn-sm" disabled title="Can't delete — used by 3 issues">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/><path d="M10 11v6M14 11v6"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+    <button class="add-issue-btn" onclick="toggleForm('add-status-form')">+ Add status</button>
+    <div class="add-row-form" id="add-status-form">
+      <input type="text" placeholder="Status name">
+      <select>
+        <option>To do category</option>
+        <option>In progress category</option>
+        <option>Done category</option>
+      </select>
+      <button class="btn btn-primary">Add</button>
+      <button class="btn" onclick="toggleForm('add-status-form')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SETTINGS: ISSUE TYPES ============ -->
+<div class="view" id="view-settings-issuetypes">
+  <p class="settings-intro">Issue types are shared across every project. Built-in types can't be deleted. "No sprint" types (Epic, by default) span multiple sprints by definition and are never scheduled into one.</p>
+  <div class="group settings-group">
+    <div class="row-list">
+      <div class="setting-row">
+        <span class="type-icon type-epic">⚡</span>
+        <span class="setting-name">Epic</span>
+        <div class="setting-meta">
+          <span class="badge-nosprint">No sprint</span>
+          <span class="badge-default">Default</span>
+          <button class="icon-btn-sm" disabled title="Built-in types can't be deleted">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/><path d="M10 11v6M14 11v6"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <span class="type-icon type-story">🔖</span>
+        <span class="setting-name">Story</span>
+        <div class="setting-meta">
+          <span class="badge-default">Default</span>
+          <button class="icon-btn-sm" disabled title="Built-in types can't be deleted">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/><path d="M10 11v6M14 11v6"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <span class="type-icon type-task">✔</span>
+        <span class="setting-name">Task</span>
+        <div class="setting-meta">
+          <span class="badge-default">Default</span>
+          <button class="icon-btn-sm" disabled title="Built-in types can't be deleted">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/><path d="M10 11v6M14 11v6"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <span class="type-icon type-subtask">↳</span>
+        <span class="setting-name">Subtask</span>
+        <div class="setting-meta">
+          <span class="badge-default">Default</span>
+          <button class="icon-btn-sm" disabled title="Built-in types can't be deleted">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/><path d="M10 11v6M14 11v6"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <span class="type-icon type-bug">🐞</span>
+        <span class="setting-name">Bug</span>
+        <div class="setting-meta">
+          <span class="badge-default">Default</span>
+          <button class="icon-btn-sm" disabled title="Built-in types can't be deleted">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/><path d="M10 11v6M14 11v6"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <span class="type-icon" style="background:#EDB248">🧪</span>
+        <span class="setting-name">Spike</span>
+        <div class="setting-meta">
+          <button class="icon-btn-sm" title="Delete issue type">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/><path d="M10 11v6M14 11v6"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+    <button class="add-issue-btn" onclick="toggleForm('add-type-form')">+ Add issue type</button>
+    <div class="add-row-form" id="add-type-form">
+      <input type="text" placeholder="Type name" style="width:130px;">
+      <input type="text" placeholder="Icon" style="width:70px;" maxlength="2">
+      <div class="color-picker">
+        <button type="button" class="color-swatch selected" style="background:#579DFF"></button>
+        <button type="button" class="color-swatch" style="background:#8F7EE7"></button>
+        <button type="button" class="color-swatch" style="background:#4BCE97"></button>
+        <button type="button" class="color-swatch" style="background:#F87168"></button>
+        <button type="button" class="color-swatch" style="background:#EDB248"></button>
+      </div>
+      <label class="toggle-label"><button type="button" class="toggle-switch" onclick="this.classList.toggle('on')"></button> No sprint</label>
+      <button class="btn btn-primary">Add</button>
+      <button class="btn" onclick="toggleForm('add-type-form')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Create issue modal -->
+<div class="modal-overlay" id="create-issue-overlay" onclick="if(event.target===this) closeModal('create-issue-overlay')">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="create-issue-modal-title">Create issue</span>
+      <button class="icon-btn detail-close" onclick="closeModal('create-issue-overlay')">✕</button>
+    </div>
+    <div class="modal-body" id="create-issue-form">
+      <div id="create-issue-type-field">
+        <span class="field-label">Type</span>
+        <div class="type-select-row">
+          <button type="button" class="type-select-opt" data-type="epic"><span class="type-icon type-epic">⚡</span> Epic</button>
+          <button type="button" class="type-select-opt" data-type="story"><span class="type-icon type-story">🔖</span> Story</button>
+          <button type="button" class="type-select-opt selected" data-type="task"><span class="type-icon type-task">✔</span> Task</button>
+          <button type="button" class="type-select-opt" data-type="subtask"><span class="type-icon type-subtask">↳</span> Subtask</button>
+          <button type="button" class="type-select-opt" data-type="bug"><span class="type-icon type-bug">🐞</span> Bug</button>
+        </div>
+      </div>
+      <div>
+        <span class="field-label">Summary</span>
+        <input type="text" class="field-input" id="create-issue-summary" placeholder="What needs doing?">
+      </div>
+      <div class="field-row">
+        <div>
+          <span class="field-label">Priority</span>
+          <select class="field-select" id="create-issue-priority">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+            <option value="urgent">Urgent</option>
+          </select>
+        </div>
+        <div>
+          <span class="field-label">Story points</span>
+          <input type="number" class="field-input" id="create-issue-points" min="0" placeholder="—">
+        </div>
+      </div>
+      <div>
+        <span class="field-label">Labels</span>
+        <input type="text" class="field-input" id="create-issue-labels" placeholder="comma, separated">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('create-issue-overlay')">Cancel</button>
+      <button class="btn btn-primary" id="create-issue-submit-btn" onclick="submitCreateIssue()">Create issue</button>
+    </div>
+  </div>
+</div>
+
+<!-- Create sprint modal -->
+<div class="modal-overlay" id="create-sprint-overlay" onclick="if(event.target===this) closeModal('create-sprint-overlay')">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Create sprint</span>
+      <button class="icon-btn detail-close" onclick="closeModal('create-sprint-overlay')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div>
+        <span class="field-label">Name</span>
+        <input type="text" class="field-input" id="create-sprint-name">
+      </div>
+      <div>
+        <span class="field-label">Goal <span style="font-weight:400;">(optional)</span></span>
+        <textarea class="field-textarea" id="create-sprint-goal" rows="2" placeholder="What are you trying to accomplish this sprint?"></textarea>
+      </div>
+      <div class="field-row">
+        <div>
+          <span class="field-label">Start date</span>
+          <input type="date" class="field-input" id="create-sprint-start">
+        </div>
+        <div>
+          <span class="field-label">End date</span>
+          <input type="date" class="field-input" id="create-sprint-end">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('create-sprint-overlay')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitCreateSprint()">Create sprint</button>
+    </div>
+  </div>
+</div>
+
+<!-- Complete sprint confirmation modal -->
+<div class="modal-overlay" id="complete-sprint-overlay" onclick="if(event.target===this) closeModal('complete-sprint-overlay')">
+  <div class="modal" style="width:400px;">
+    <div class="modal-header">
+      <span class="modal-title">Complete sprint?</span>
+      <button class="icon-btn detail-close" onclick="closeModal('complete-sprint-overlay')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p id="complete-sprint-message" style="font-size:13px;color:var(--text-muted);line-height:1.6;margin:0;"></p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('complete-sprint-overlay')">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmCompleteSprint()">Complete sprint</button>
+    </div>
+  </div>
+</div>
+
+<!-- Issue detail slide-over -->
+<div class="overlay" id="overlay" onclick="closeDetail()"></div>
+<div class="detail-panel" id="detail-panel">
+  <div class="detail-header">
+    <span class="type-icon" id="detail-type-icon"></span>
+    <span class="card-key" id="detail-key"></span>
+    <button class="icon-btn" id="detail-delete-btn" title="Delete issue" aria-label="Delete issue" onclick="deleteCurrentIssue()" style="margin-left:auto;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/><path d="M10 11v6M14 11v6"/></svg>
+    </button>
+    <button class="icon-btn detail-close" onclick="closeDetail()">✕</button>
+  </div>
+  <div class="detail-body">
+    <div class="detail-summary" id="detail-summary"></div>
+    <div class="detail-field">
+      <span class="detail-field-label">Status</span>
+      <div class="status-select-wrap">
+        <button type="button" class="status-pill-btn" id="detail-status-btn" onclick="toggleStatusDropdown(event)"></button>
+        <div class="status-dropdown" id="status-dropdown">
+          <button type="button" onclick="changeStatus('To Do')"><span class="status-pill status-todo">TO DO</span></button>
+          <button type="button" onclick="changeStatus('In Progress')"><span class="status-pill status-inprogress">IN PROGRESS</span></button>
+          <button type="button" onclick="changeStatus('Blocked')"><span class="status-pill status-blocked">BLOCKED</span></button>
+          <button type="button" onclick="changeStatus('Done')"><span class="status-pill status-done">DONE</span></button>
+        </div>
+      </div>
+    </div>
+    <div class="detail-field" id="detail-sprint-field">
+      <span class="detail-field-label">Sprint</span>
+      <div class="sprint-field-wrap">
+        <button type="button" class="sprint-field-btn" id="detail-sprint-btn" onclick="openSprintDropdown(event)"></button>
+        <div class="sprint-dropdown" id="sprint-dropdown-field"></div>
+      </div>
+    </div>
+    <div class="detail-field"><span class="detail-field-label">Priority</span><span id="detail-priority"></span></div>
+    <div class="detail-field"><span class="detail-field-label">Points</span><span id="detail-points"></span></div>
+    <div class="detail-field"><span class="detail-field-label">Labels</span><span id="detail-labels"></span></div>
+    <div class="detail-field-label">Description</div>
+    <div class="detail-desc" id="detail-desc-view" onclick="startEditDescription()">No description yet — click to add one.</div>
+    <div class="detail-desc-edit" id="detail-desc-edit">
+      <textarea class="field-textarea" id="detail-desc-textarea" rows="4" placeholder="Add a description…"></textarea>
+      <div class="detail-desc-actions">
+        <button class="btn btn-primary" onclick="saveDescription()">Save</button>
+        <button class="btn" onclick="cancelDescription()">Cancel</button>
+      </div>
+    </div>
+    <div class="comment">
+      <div class="detail-field-label" style="margin-bottom:8px;">Comments</div>
+      <div class="comment-list" id="comment-list"></div>
+      <textarea class="comment-input" id="comment-textarea" rows="2" placeholder="Add a comment…"></textarea>
+      <button class="btn btn-primary" style="margin-top:8px;" onclick="addComment()">Comment</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Theme toggle — one click, persisted, no page-load flash (see the inline <script> in <head>)
+  document.getElementById('theme-toggle').addEventListener('click', () => {
+    const root = document.documentElement;
+    const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try{ localStorage.setItem('lj-theme', next); }catch(e){}
+  });
+
+  // Tab switching
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('view-' + tab.dataset.view).classList.add('active');
+    });
+  });
+
+  // Collapse/expand backlog groups
+  function toggleGroup(header){
+    header.parentElement.classList.toggle('collapsed');
+  }
+
+  // ---------- Shared issue/sprint model ----------
+  let nextIssueNumber = 25;   // WEB-24 is the highest seeded key
+  let sprintCounter = 5;      // next default sprint name suggestion
+  let sprintPendingCompletion = null;
+
+  function openModal(id){ document.getElementById(id).classList.add('open'); }
+  function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+
+  function makeTypeIconHTML(type){ return `<span class="type-icon ${typeClass[type]}">${typeIcons[type]}</span>`; }
+  function makePriorityHTML(priority){
+    const map = {urgent:'🔴',high:'🔺',medium:'🟠',low:'🔵'};
+    const label = {urgent:'Urgent',high:'High',medium:'Medium',low:'Low'};
+    return `<span title="Priority: ${label[priority]}">${map[priority]}</span>`;
+  }
+  function makeLabelsHTML(labels){
+    return (labels || '').split(',').map(s => s.trim()).filter(Boolean).map(l => `<span class="label-chip">${l}</span>`).join('');
+  }
+
+  function updateColumnCount(columnId){
+    const col = document.getElementById(columnId);
+    if(!col) return;
+    col.querySelector('.column-count').textContent = col.querySelectorAll('.card').length;
+  }
+
+  function updateGroupCounts(groupId){
+    const group = document.getElementById(groupId);
+    if(!group) return;
+    const rows = group.querySelectorAll('.row-list > .row:not(.epic-header)');
+    const points = Array.from(rows).reduce((sum, r) => sum + (parseInt(r.dataset.points) || 0), 0);
+    const el = group.querySelector('.group-sub-count');
+    if(el) el.textContent = `${rows.length} issue${rows.length === 1 ? '' : 's'} · ${points} point${points === 1 ? '' : 's'}`;
+  }
+
+  function formatDateRange(startISO, endISO){
+    const opts = {month:'short', day:'numeric'};
+    const s = new Date(startISO + 'T00:00:00');
+    const e = new Date(endISO + 'T00:00:00');
+    return `${s.toLocaleDateString('en-US', opts)} – ${e.toLocaleDateString('en-US', opts)}`;
+  }
+
+  // ---------- Sprint assignment: every issue belongs to exactly one sprint (or the backlog) ----------
+  let boardSprintId = 'sprint-4'; // which sprint's issues the board currently shows
+
+  function currentSprintOf(row){
+    if(!row) return 'backlog';
+    const group = row.closest('.group');
+    if(!group) return 'backlog';
+    return group.id === 'backlog-group' ? 'backlog' : (group.dataset.sprintId || 'backlog');
+  }
+
+  function sprintLabel(sprintId){
+    if(sprintId === 'backlog') return 'Backlog';
+    const group = document.querySelector(`#view-backlog .group[data-sprint-id="${sprintId}"]`);
+    return group ? group.querySelector('.group-title').textContent : sprintId;
+  }
+
+  // Keeps the board card in sync when an issue's sprint changes: adds/removes the card
+  // depending on whether the new sprint is the one the board is currently showing.
+  function syncBoardCardForSprintChange(key, newSprintId){
+    const existingCard = document.querySelector(`#view-board .card[data-key="${key}"]`);
+    if(existingCard && newSprintId !== boardSprintId){
+      const col = existingCard.closest('.board-column');
+      existingCard.remove();
+      if(col) updateColumnCount(col.id);
+    } else if(!existingCard && newSprintId === boardSprintId){
+      const row = document.querySelector(`#view-backlog .row[data-key="${key}"]`);
+      if(row){
+        const issue = {key, summary: row.dataset.summary, type: row.dataset.type, priority: row.dataset.priority,
+          points: row.dataset.points, labels: row.dataset.labels, status: row.dataset.status};
+        const colId = {'To Do':'column-todo','In Progress':'column-inprogress','Blocked':'column-blocked','Done':'column-done'}[issue.status] || 'column-todo';
+        insertIssueCard(document.getElementById(colId), issue, newSprintId);
+        updateColumnCount(colId);
+      }
+    }
+  }
+
+  // Moves a backlog row's DOM node into a different sprint group's row-list (or the Backlog group's).
+  // Used by both the detail panel's Sprint dropdown and drag-and-drop between sprint sections.
+  function moveRowToSprint(row, newSprintId){
+    const sourceGroup = row.closest('.group');
+    const targetGroup = newSprintId === 'backlog'
+      ? document.getElementById('backlog-group')
+      : document.querySelector(`#view-backlog .group[data-sprint-id="${newSprintId}"]`);
+    if(!targetGroup || targetGroup === sourceGroup) return false;
+
+    const targetRowList = targetGroup.querySelector('.row-list');
+    const emptyHint = targetRowList.querySelector('.empty-hint');
+    if(emptyHint) emptyHint.remove();
+    targetRowList.appendChild(row);
+
+    if(sourceGroup) updateGroupCounts(sourceGroup.id);
+    updateGroupCounts(targetGroup.id);
+    syncBoardCardForSprintChange(row.dataset.key, newSprintId);
+    return true;
+  }
+
+  function openSprintDropdown(e){
+    e.stopPropagation();
+    const dropdown = document.getElementById('sprint-dropdown-field');
+    const groups = Array.from(document.querySelectorAll('#view-backlog .group[data-sprint-id]'));
+    dropdown.innerHTML = '<button type="button" onclick="changeSprintAssignment(\'backlog\')">Backlog</button>' +
+      groups.map(g => `<button type="button" onclick="changeSprintAssignment('${g.dataset.sprintId}')">${g.querySelector('.group-title').textContent}</button>`).join('');
+    document.getElementById('status-dropdown').classList.remove('open');
+    dropdown.classList.toggle('open');
+  }
+  document.getElementById('sprint-dropdown-field').addEventListener('click', e => e.stopPropagation());
+  document.addEventListener('click', () => document.getElementById('sprint-dropdown-field').classList.remove('open'));
+
+  function changeSprintAssignment(newSprintId){
+    if(!currentOpenItem) return;
+    const key = currentOpenItem.dataset.key;
+    const row = document.querySelector(`#view-backlog .row[data-key="${key}"]`);
+    if(row) moveRowToSprint(row, newSprintId);
+    document.getElementById('detail-sprint-btn').textContent = sprintLabel(newSprintId);
+    document.getElementById('sprint-dropdown-field').classList.remove('open');
+  }
+
+  // ---------- Drag and drop: board cards change status, backlog rows change sprint ----------
+  let draggedEl = null;
+
+  document.addEventListener('dragstart', (e) => {
+    const el = e.target.closest('.card[data-key], .row[data-key]');
+    if(!el){ return; }
+    draggedEl = el;
+    el.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', el.dataset.key);
+  });
+  document.addEventListener('dragend', () => {
+    if(draggedEl) draggedEl.classList.remove('dragging');
+    draggedEl = null;
+    document.querySelectorAll('.drag-over').forEach(d => d.classList.remove('drag-over'));
+  });
+
+  const boardColumnsEl = document.querySelector('.board-columns');
+  boardColumnsEl.addEventListener('dragover', (e) => {
+    if(!draggedEl || !draggedEl.classList.contains('card')) return;
+    const col = e.target.closest('.board-column');
+    if(!col) return;
+    e.preventDefault();
+    document.querySelectorAll('.board-column.drag-over').forEach(c => c.classList.remove('drag-over'));
+    col.classList.add('drag-over');
+  });
+  boardColumnsEl.addEventListener('dragleave', (e) => {
+    const col = e.target.closest('.board-column');
+    if(col) col.classList.remove('drag-over');
+  });
+  boardColumnsEl.addEventListener('drop', (e) => {
+    const col = e.target.closest('.board-column');
+    document.querySelectorAll('.board-column.drag-over').forEach(c => c.classList.remove('drag-over'));
+    if(!col || !draggedEl || !draggedEl.classList.contains('card')) return;
+    e.preventDefault();
+    const statusByColumn = {'column-todo':'To Do','column-inprogress':'In Progress','column-blocked':'Blocked','column-done':'Done'};
+    const newStatus = statusByColumn[col.id];
+    if(newStatus) setIssueStatus(draggedEl.dataset.key, newStatus);
+  });
+
+  const backlogWrapEl = document.querySelector('#view-backlog .backlog-wrap');
+  backlogWrapEl.addEventListener('dragover', (e) => {
+    if(!draggedEl || !draggedEl.classList.contains('row')) return;
+    const list = e.target.closest('.row-list');
+    if(!list) return;
+    e.preventDefault();
+    document.querySelectorAll('.row-list.drag-over').forEach(l => l.classList.remove('drag-over'));
+    list.classList.add('drag-over');
+  });
+  backlogWrapEl.addEventListener('dragleave', (e) => {
+    const list = e.target.closest('.row-list');
+    if(list) list.classList.remove('drag-over');
+  });
+  backlogWrapEl.addEventListener('drop', (e) => {
+    const list = e.target.closest('.row-list');
+    document.querySelectorAll('.row-list.drag-over').forEach(l => l.classList.remove('drag-over'));
+    if(!list || !draggedEl || !draggedEl.classList.contains('row')) return;
+    e.preventDefault();
+    const targetGroup = list.closest('.group');
+    if(!targetGroup) return;
+    const newSprintId = targetGroup.id === 'backlog-group' ? 'backlog' : targetGroup.dataset.sprintId;
+    moveRowToSprint(draggedEl, newSprintId);
+  });
+
+  // ---------- Create / edit issue ----------
+  // Epics and Stories always live in the Epics & Stories section, regardless of which "+" button
+  // was used to open this modal — Task/Subtask/Bug follow the trigger context (board column or backlog).
+  let editingKey = null;
+
+  function selectIssueType(type){
+    document.querySelectorAll('#create-issue-overlay .type-select-opt').forEach(o => o.classList.toggle('selected', o.dataset.type === type));
+  }
+  function getSelectedIssueType(){
+    return document.querySelector('#create-issue-overlay .type-select-opt.selected').dataset.type;
+  }
+
+  function openCreateIssue(context, defaultType){
+    editingKey = null;
+    document.getElementById('create-issue-summary').value = '';
+    document.getElementById('create-issue-points').value = '';
+    document.getElementById('create-issue-labels').value = '';
+    document.getElementById('create-issue-priority').value = 'medium';
+    document.getElementById('create-issue-form').dataset.context = context;
+    selectIssueType(defaultType || 'task');
+    document.getElementById('create-issue-type-field').style.display = '';
+    document.getElementById('create-issue-modal-title').textContent = 'Create issue';
+    document.getElementById('create-issue-submit-btn').textContent = 'Create issue';
+
+    openModal('create-issue-overlay');
+    document.getElementById('create-issue-summary').focus();
+  }
+
+  document.querySelectorAll('#create-issue-overlay .type-select-opt').forEach(opt => {
+    opt.addEventListener('click', () => selectIssueType(opt.dataset.type));
+  });
+
+  function insertIssueRow(rowListEl, issue){
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.draggable = true;
+    row.setAttribute('onclick', 'openDetail(this)');
+    Object.assign(row.dataset, issue);
+    row.innerHTML = rowInnerHTML(issue);
+    rowListEl.appendChild(row);
+    return row;
+  }
+
+  function insertIssueCard(columnEl, issue, sprintId){
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.draggable = true;
+    card.setAttribute('onclick', 'openDetail(this)');
+    Object.assign(card.dataset, issue);
+    card.dataset.sprint = sprintId;
+    card.innerHTML = cardInnerHTML(issue);
+    const addBtn = columnEl.querySelector('.add-issue-btn');
+    if(addBtn) columnEl.insertBefore(card, addBtn); else columnEl.appendChild(card);
+    return card;
+  }
+
+  function rowInnerHTML(issue){
+    return `
+      <span class="row-indent"></span>
+      ${makeTypeIconHTML(issue.type)}
+      <span class="row-key">${issue.key}</span>
+      <span class="row-summary">${issue.summary}</span>
+      <div class="row-labels">${makeLabelsHTML(issue.labels)}</div>
+      <div class="row-right">
+        ${makePriorityHTML(issue.priority)}
+        <span class="points-badge">${issue.points || '—'}</span>
+        <span class="status-pill ${statusClass[issue.status]}">${issue.status.toUpperCase()}</span>
+      </div>`;
+  }
+  function cardInnerHTML(issue){
+    return `
+      <div class="card-top">${makeTypeIconHTML(issue.type)}<span class="card-key">${issue.key}</span></div>
+      <div class="card-summary">${issue.summary}</div>
+      <div class="card-labels">${makeLabelsHTML(issue.labels)}</div>
+      <div class="card-footer">${makePriorityHTML(issue.priority)}<span class="points-badge">${issue.points || '—'}</span></div>`;
+  }
+
+  // Re-renders a row's or card's visible content after its dataset has been edited in place —
+  // preserves the element (and any onclick/draggable attributes) rather than recreating it.
+  function refreshIssueVisuals(el){
+    const d = el.dataset;
+    if(el.classList.contains('row')){
+      el.querySelector('.type-icon').outerHTML = makeTypeIconHTML(d.type);
+      el.querySelector('.row-summary').textContent = d.summary;
+      el.querySelector('.row-labels').innerHTML = makeLabelsHTML(d.labels);
+      const priorityEl = el.querySelector('.row-right span[title^="Priority"]');
+      if(priorityEl) priorityEl.outerHTML = makePriorityHTML(d.priority);
+      const pointsEl = el.querySelector('.points-badge');
+      if(pointsEl) pointsEl.textContent = d.points || '—';
+    } else if(el.classList.contains('card')){
+      el.querySelector('.card-top .type-icon').outerHTML = makeTypeIconHTML(d.type);
+      el.querySelector('.card-summary').textContent = d.summary;
+      el.querySelector('.card-labels').innerHTML = makeLabelsHTML(d.labels);
+      const priorityEl = el.querySelector('.card-footer span[title^="Priority"]');
+      if(priorityEl) priorityEl.outerHTML = makePriorityHTML(d.priority);
+      const pointsEl = el.querySelector('.card-footer .points-badge');
+      if(pointsEl) pointsEl.textContent = d.points || '—';
+    }
+  }
+
+  // Opens the same modal pre-filled for editing. Type is locked once created — changing an
+  // issue's category is a delete-and-recreate, so relocating it between sections stays unambiguous.
+  function openEditIssue(key){
+    const el = document.querySelector(`[data-key="${key}"]`);
+    if(!el) return;
+    editingKey = key;
+    const d = el.dataset;
+    document.getElementById('create-issue-summary').value = d.summary || '';
+    document.getElementById('create-issue-points').value = d.points || '';
+    document.getElementById('create-issue-labels').value = d.labels || '';
+    document.getElementById('create-issue-priority').value = d.priority || 'medium';
+    selectIssueType(d.type);
+    document.getElementById('create-issue-type-field').style.display = 'none';
+    document.getElementById('create-issue-modal-title').textContent = `Edit ${d.key}`;
+    document.getElementById('create-issue-submit-btn').textContent = 'Save changes';
+
+    openModal('create-issue-overlay');
+    document.getElementById('create-issue-summary').focus();
+  }
+
+  function submitCreateIssue(){
+    const summaryEl = document.getElementById('create-issue-summary');
+    const summary = summaryEl.value.trim();
+    if(!summary){ summaryEl.focus(); return; }
+    const priority = document.getElementById('create-issue-priority').value;
+    const points = document.getElementById('create-issue-points').value;
+    const labels = document.getElementById('create-issue-labels').value.trim();
+
+    if(editingKey){
+      document.querySelectorAll(`[data-key="${editingKey}"]`).forEach(el => {
+        el.dataset.summary = summary;
+        el.dataset.priority = priority;
+        el.dataset.points = points;
+        el.dataset.labels = labels;
+        refreshIssueVisuals(el);
+        const col = el.closest('.board-column');
+        if(col) updateColumnCount(col.id);
+        const grp = el.closest('.group');
+        if(grp && grp.id) updateGroupCounts(grp.id);
+      });
+      if(currentOpenItem && currentOpenItem.dataset.key === editingKey){
+        document.getElementById('detail-summary').textContent = summary;
+        document.getElementById('detail-priority').textContent = priorityIcons[priority] || priority;
+        document.getElementById('detail-points').textContent = points || '—';
+        document.getElementById('detail-labels').innerHTML = makeLabelsHTML(labels) || '—';
+      }
+      editingKey = null;
+      closeModal('create-issue-overlay');
+      return;
+    }
+
+    const type = getSelectedIssueType();
+    const context = document.getElementById('create-issue-form').dataset.context;
+    const key = 'WEB-' + (nextIssueNumber++);
+    const issue = {key, summary, type, priority, points, labels, status: type === 'epic' ? 'In Progress' : 'To Do'};
+
+    if(type === 'epic'){
+      insertIssueRow(document.getElementById('epics-group-rowlist'), issue);
+      updateGroupCounts('epics-group');
+    } else if(type === 'story'){
+      insertIssueRow(document.getElementById('stories-group-rowlist'), issue);
+      updateGroupCounts('stories-group');
+    } else if(context === 'board-todo'){
+      insertIssueRow(document.getElementById('sprint-4-rowlist'), issue);
+      insertIssueCard(document.getElementById('column-todo'), issue, 'sprint-4');
+      updateColumnCount('column-todo');
+      updateGroupCounts('sprint-4-group');
+    } else {
+      insertIssueRow(document.getElementById('backlog-group-rowlist'), issue);
+      updateGroupCounts('backlog-group');
+    }
+    closeModal('create-issue-overlay');
+  }
+
+  // ---------- Delete ----------
+  function deleteIssue(key){
+    const el = document.querySelector(`[data-key="${key}"]`);
+    const label = el ? el.dataset.summary : key;
+    if(!confirm(`Delete ${key} — "${label}"? This can't be undone.`)) return;
+
+    const affectedColumns = new Set();
+    const affectedGroups = new Set();
+    document.querySelectorAll(`[data-key="${key}"]`).forEach(node => {
+      const col = node.closest('.board-column');
+      if(col) affectedColumns.add(col.id);
+      const grp = node.closest('.group');
+      if(grp && grp.id) affectedGroups.add(grp.id);
+      node.remove();
+    });
+    affectedColumns.forEach(updateColumnCount);
+    affectedGroups.forEach(updateGroupCounts);
+
+    if(currentOpenItem && currentOpenItem.dataset.key === key) closeDetail();
+  }
+  function deleteCurrentIssue(){
+    if(!currentOpenItem) return;
+    deleteIssue(currentOpenItem.dataset.key);
+  }
+
+  // ---------- Create sprint ----------
+  function openCreateSprint(){
+    document.getElementById('create-sprint-name').value = `Sprint ${sprintCounter}`;
+    document.getElementById('create-sprint-goal').value = '';
+    document.getElementById('create-sprint-start').value = '';
+    document.getElementById('create-sprint-end').value = '';
+    openModal('create-sprint-overlay');
+  }
+
+  function submitCreateSprint(){
+    const startEl = document.getElementById('create-sprint-start');
+    const endEl = document.getElementById('create-sprint-end');
+    const start = startEl.value, end = endEl.value;
+    if(!start || !end){ (start ? endEl : startEl).focus(); return; }
+    const name = document.getElementById('create-sprint-name').value.trim() || `Sprint ${sprintCounter}`;
+
+    const id = 'sprint-' + sprintCounter;
+    sprintCounter++;
+
+    const group = document.createElement('div');
+    group.className = 'group';
+    group.id = id + '-group';
+    group.dataset.sprintId = id;
+    group.dataset.state = 'planned';
+    group.dataset.start = start;
+    group.dataset.end = end;
+    group.innerHTML = `
+      <div class="group-header" onclick="toggleGroup(this)">
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+        <span class="group-title">${name}</span>
+        <span class="sprint-state-badge state-planned">PLANNED</span>
+        <span class="group-sub"><span class="group-sub-dates">${formatDateRange(start, end)}</span> · <span class="group-sub-count">0 issues · 0 points</span></span>
+        <div class="group-header-spacer"></div>
+        <button class="btn" onclick="event.stopPropagation(); startSprint(this.closest('.group'))">Start sprint</button>
+      </div>
+      <div class="row-list" id="${id}-rowlist">
+        <div class="empty-hint">No issues yet — move some in from the backlog once it starts.</div>
+      </div>`;
+    document.getElementById('backlog-group').before(group);
+    closeModal('create-sprint-overlay');
+    renderSprintsTab();
+  }
+
+  function startSprint(groupEl){
+    groupEl.dataset.state = 'active';
+    const badge = groupEl.querySelector('.sprint-state-badge');
+    badge.textContent = 'ACTIVE';
+    badge.className = 'sprint-state-badge state-active';
+    const btn = groupEl.querySelector('.group-header .btn');
+    btn.textContent = 'Complete sprint';
+    btn.setAttribute('onclick', "event.stopPropagation(); completeSprint(this.closest('.group'))");
+    renderSprintsTab();
+  }
+
+  // ---------- Complete sprint (moves unfinished issues on, keeps done ones in history) ----------
+  function completeSprint(groupEl){
+    const rows = Array.from(groupEl.querySelectorAll('.row-list > .row:not(.epic-header)'));
+    const unfinished = rows.filter(r => r.dataset.status !== 'Done');
+
+    const plannedGroups = Array.from(document.querySelectorAll('#view-backlog .group[data-state="planned"]'))
+      .filter(g => g !== groupEl)
+      .sort((a, b) => a.dataset.start.localeCompare(b.dataset.start));
+    const target = plannedGroups[0] || null;
+    const targetName = target ? target.querySelector('.group-title').textContent : 'the Backlog';
+
+    sprintPendingCompletion = {groupEl, unfinished, target};
+
+    if(unfinished.length === 0){
+      confirmCompleteSprint();
+      return;
+    }
+    document.getElementById('complete-sprint-message').textContent =
+      `${unfinished.length} unfinished issue${unfinished.length === 1 ? '' : 's'} will move to ${targetName}. Completed issues stay right here, in this sprint's history — nothing gets deleted.`;
+    openModal('complete-sprint-overlay');
+  }
+
+  function confirmCompleteSprint(){
+    const {groupEl, unfinished, target} = sprintPendingCompletion;
+    const targetRowList = target ? target.querySelector('.row-list') : document.getElementById('backlog-group-rowlist');
+
+    unfinished.forEach(row => {
+      const emptyHint = targetRowList.querySelector('.empty-hint');
+      if(emptyHint) emptyHint.remove();
+      targetRowList.appendChild(row); // status is left unchanged, per the sprint-completion rule
+      const card = document.querySelector(`#view-board .card[data-key="${row.dataset.key}"]`);
+      if(card) card.remove(); // the board only ever shows the active sprint
+    });
+
+    ['column-todo','column-inprogress','column-blocked','column-done'].forEach(updateColumnCount);
+    updateGroupCounts(groupEl.id);
+    updateGroupCounts(target ? target.id : 'backlog-group');
+
+    groupEl.dataset.state = 'completed';
+    const badge = groupEl.querySelector('.sprint-state-badge');
+    badge.textContent = 'COMPLETED';
+    badge.className = 'sprint-state-badge state-completed';
+    const actionBtn = groupEl.querySelector('.group-header .btn');
+    if(actionBtn) actionBtn.remove();
+
+    document.getElementById('sprint-history-list').prepend(groupEl); // the whole node moves — its Done rows travel with it
+
+    closeModal('complete-sprint-overlay');
+    sprintPendingCompletion = null;
+    renderSprintsTab();
+  }
+
+  // ---------- Sprints tab: quick summary of what's currently active/planned ----------
+  function renderSprintsTab(){
+    const groups = Array.from(document.querySelectorAll('#view-backlog .group[data-sprint-id]'));
+    const summary = document.getElementById('sprints-current-summary');
+    if(groups.length === 0){
+      summary.textContent = 'No active or planned sprints right now.';
+      return;
+    }
+    summary.innerHTML = 'Right now: ' + groups.map(g => {
+      const name = g.querySelector('.group-title').textContent;
+      const state = g.dataset.state;
+      return `<span class="sprint-state-badge state-${state}">${state.toUpperCase()}</span> ${name}`;
+    }).join(' &nbsp; ');
+  }
+  document.querySelector('.tab[data-view="sprints"]').addEventListener('click', renderSprintsTab);
+
+  // Settings — global, so it swaps out the project header/tabs entirely rather than living under them
+  const projectHeader = document.getElementById('project-header');
+  const settingsHeader = document.getElementById('settings-header');
+  let lastProjectView = 'board';
+
+  document.querySelectorAll('#project-header .tab').forEach(tab => {
+    tab.addEventListener('click', () => { lastProjectView = tab.dataset.view; });
+  });
+
+  document.getElementById('settings-btn').addEventListener('click', () => {
+    projectHeader.style.display = 'none';
+    settingsHeader.style.display = '';
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.querySelector('#settings-header .tab[data-view="settings-statuses"]').classList.add('active');
+    document.getElementById('view-settings-statuses').classList.add('active');
+  });
+
+  document.getElementById('settings-back').addEventListener('click', () => {
+    settingsHeader.style.display = 'none';
+    projectHeader.style.display = '';
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.querySelector(`#project-header .tab[data-view="${lastProjectView}"]`).classList.add('active');
+    document.getElementById('view-' + lastProjectView).classList.add('active');
+  });
+
+  function toggleForm(id){
+    document.getElementById(id).classList.toggle('open');
+  }
+
+  // Color picker in the "add issue type" form
+  document.querySelectorAll('.color-picker').forEach(picker => {
+    picker.querySelectorAll('.color-swatch').forEach(swatch => {
+      swatch.addEventListener('click', () => {
+        picker.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+        swatch.classList.add('selected');
+      });
+    });
+  });
+
+  // Filter dropdowns (Type / Label / Priority) — one open at a time, closes on outside click
+  document.querySelectorAll('.filter-wrap > .chip-filter').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const dropdown = btn.nextElementSibling;
+      const wasOpen = dropdown.classList.contains('open');
+      document.querySelectorAll('.filter-dropdown.open').forEach(d => d.classList.remove('open'));
+      if (!wasOpen) dropdown.classList.add('open');
+    });
+  });
+  document.querySelectorAll('.filter-dropdown').forEach(d => d.addEventListener('click', e => e.stopPropagation()));
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.filter-dropdown.open').forEach(d => d.classList.remove('open'));
+  });
+
+  // Faceted filtering + free-text search. Board and Backlog each filter independently, scoped to their own view —
+  // driven entirely by the data-type/data-priority/data-labels/data-key/data-summary attributes already on each card/row.
+  function setupFiltering(viewId, searchInputId){
+    const scope = document.getElementById(viewId);
+    const searchInput = document.getElementById(searchInputId);
+    const wraps = scope.querySelectorAll('.filter-wrap');
+
+    function apply(){
+      const facets = {};
+      wraps.forEach(wrap => {
+        const facet = wrap.dataset.facet;
+        const checked = Array.from(wrap.querySelectorAll('input:checked')).map(i => i.value);
+        facets[facet] = checked;
+        const btn = wrap.querySelector('.chip-filter');
+        const countEl = btn.querySelector('.filter-count');
+        btn.classList.toggle('active', checked.length > 0);
+        countEl.textContent = checked.length || '';
+        countEl.classList.toggle('show', checked.length > 0);
+      });
+      const q = (searchInput && searchInput.value || '').trim().toLowerCase();
+      scope.querySelectorAll('[data-key]').forEach(item => {
+        const d = item.dataset;
+        let visible = true;
+        if (facets.type && facets.type.length && !facets.type.includes(d.type)) visible = false;
+        if (facets.priority && facets.priority.length && !facets.priority.includes(d.priority)) visible = false;
+        if (facets.label && facets.label.length) {
+          const itemLabels = (d.labels || '').split(',').filter(Boolean);
+          if (!facets.label.some(l => itemLabels.includes(l))) visible = false;
+        }
+        if (q && !(d.key + ' ' + d.summary).toLowerCase().includes(q)) visible = false;
+        item.classList.toggle('is-hidden', !visible);
+      });
+    }
+
+    wraps.forEach(wrap => wrap.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.addEventListener('change', apply)));
+    if (searchInput) searchInput.addEventListener('input', apply);
+  }
+  setupFiltering('view-board', 'board-search');
+  setupFiltering('view-backlog', 'backlog-search');
+
+  // Issue detail slide-over
+  const typeIcons = {epic:'⚡',story:'🔖',task:'✔',subtask:'↳',bug:'🐞'};
+  const typeClass = {epic:'type-epic',story:'type-story',task:'type-task',subtask:'type-subtask',bug:'type-bug'};
+  const priorityIcons = {urgent:'🔴 Urgent',high:'🔺 High',medium:'🟠 Medium',low:'🔵 Low'};
+  const statusClass = {'To Do':'status-todo','In Progress':'status-inprogress','Blocked':'status-blocked','Done':'status-done'};
+  let currentOpenItem = null;
+
+  function openDetail(el){
+    const d = el.dataset;
+    if(!d.key) return;
+    currentOpenItem = el;
+    document.getElementById('detail-key').textContent = d.key;
+    document.getElementById('detail-summary').textContent = d.summary;
+    document.getElementById('detail-type-icon').textContent = typeIcons[d.type] || '';
+    document.getElementById('detail-type-icon').className = 'type-icon ' + (typeClass[d.type] || '');
+    document.getElementById('detail-priority').textContent = priorityIcons[d.priority] || d.priority;
+    document.getElementById('detail-points').textContent = d.points || '—';
+    document.getElementById('detail-labels').innerHTML = (d.labels||'').split(',').filter(Boolean).map(l=>`<span class="label-chip">${l}</span>`).join(' ') || '—';
+
+    document.getElementById('detail-status-btn').innerHTML = `<span class="status-pill ${statusClass[d.status]||''}">${(d.status||'').toUpperCase()}</span>`;
+    document.getElementById('status-dropdown').classList.remove('open');
+
+    const sprintField = document.getElementById('detail-sprint-field');
+    if(d.type === 'epic' || d.type === 'story'){
+      sprintField.style.display = 'none';
+    } else {
+      sprintField.style.display = '';
+      const backlogRow = document.querySelector(`#view-backlog .row[data-key="${d.key}"]`);
+      const sprintId = backlogRow ? currentSprintOf(backlogRow) : (d.sprint || 'backlog');
+      document.getElementById('detail-sprint-btn').textContent = sprintLabel(sprintId);
+    }
+    document.getElementById('sprint-dropdown-field').classList.remove('open');
+
+    const descView = document.getElementById('detail-desc-view');
+    descView.textContent = d.desc || 'No description yet — click to add one.';
+    descView.style.display = '';
+    document.getElementById('detail-desc-edit').classList.remove('open');
+
+    document.getElementById('comment-list').innerHTML = '';
+    document.getElementById('comment-textarea').value = '';
+
+    document.getElementById('overlay').classList.add('open');
+    document.getElementById('detail-panel').classList.add('open');
+  }
+  function closeDetail(){
+    document.getElementById('overlay').classList.remove('open');
+    document.getElementById('detail-panel').classList.remove('open');
+  }
+
+  // ---------- Editable status: click the pill, pick a new one, it moves board columns too ----------
+  function toggleStatusDropdown(e){
+    e.stopPropagation();
+    document.getElementById('status-dropdown').classList.toggle('open');
+  }
+  document.getElementById('status-dropdown').addEventListener('click', e => e.stopPropagation());
+  document.addEventListener('click', () => document.getElementById('status-dropdown').classList.remove('open'));
+
+  // Shared by the detail panel's status dropdown AND board drag-and-drop — one issue, one status,
+  // reflected everywhere it appears (board card + backlog row for the same key).
+  function setIssueStatus(key, newStatus){
+    const columnByStatus = {'To Do':'column-todo','In Progress':'column-inprogress','Blocked':'column-blocked','Done':'column-done'};
+
+    document.querySelectorAll(`[data-key="${key}"]`).forEach(el => {
+      el.dataset.status = newStatus;
+      if(el.classList.contains('row')){
+        const pill = el.querySelector('.status-pill');
+        if(pill){ pill.className = 'status-pill ' + statusClass[newStatus]; pill.textContent = newStatus.toUpperCase(); }
+      } else if(el.classList.contains('card')){
+        const toColumn = document.getElementById(columnByStatus[newStatus]);
+        const fromColumn = el.closest('.board-column');
+        if(fromColumn && toColumn && fromColumn.id !== toColumn.id){
+          const addBtn = toColumn.querySelector('.add-issue-btn');
+          if(addBtn) toColumn.insertBefore(el, addBtn); else toColumn.appendChild(el);
+          updateColumnCount(fromColumn.id);
+          updateColumnCount(toColumn.id);
+        }
+      }
+    });
+
+    if(currentOpenItem && currentOpenItem.dataset.key === key){
+      document.getElementById('detail-status-btn').innerHTML = `<span class="status-pill ${statusClass[newStatus]}">${newStatus.toUpperCase()}</span>`;
+    }
+  }
+
+  function changeStatus(newStatus){
+    if(!currentOpenItem) return;
+    setIssueStatus(currentOpenItem.dataset.key, newStatus);
+    document.getElementById('status-dropdown').classList.remove('open');
+  }
+
+  // ---------- Editable description: click to open a textarea, Save writes it back to the issue ----------
+  function startEditDescription(){
+    document.getElementById('detail-desc-textarea').value = currentOpenItem ? (currentOpenItem.dataset.desc || '') : '';
+    document.getElementById('detail-desc-view').style.display = 'none';
+    document.getElementById('detail-desc-edit').classList.add('open');
+    document.getElementById('detail-desc-textarea').focus();
+  }
+  function saveDescription(){
+    const text = document.getElementById('detail-desc-textarea').value.trim();
+    if(currentOpenItem) currentOpenItem.dataset.desc = text;
+    const view = document.getElementById('detail-desc-view');
+    view.textContent = text || 'No description yet — click to add one.';
+    view.style.display = '';
+    document.getElementById('detail-desc-edit').classList.remove('open');
+  }
+  function cancelDescription(){
+    document.getElementById('detail-desc-edit').classList.remove('open');
+    document.getElementById('detail-desc-view').style.display = '';
+  }
+
+  // ---------- Comments: Comment button actually appends to the list, timestamped ----------
+  function formatTimestamp(date){
+    return date.toLocaleString('en-US', {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
+  }
+  function addComment(){
+    const textarea = document.getElementById('comment-textarea');
+    const text = textarea.value.trim();
+    if(!text) return;
+    const item = document.createElement('div');
+    item.className = 'comment-item';
+    const meta = document.createElement('div');
+    meta.className = 'comment-item-meta';
+    meta.textContent = formatTimestamp(new Date());
+    item.appendChild(meta);
+    item.appendChild(document.createTextNode(text));
+    document.getElementById('comment-list').appendChild(item);
+    textarea.value = '';
+  }
+
+  // Every seeded card/row becomes draggable too (dynamically-created ones already set this on insert)
+  document.querySelectorAll('.card[data-key], .row[data-key]').forEach(el => { el.draggable = true; });
+
+  // Recompute seeded counts on load rather than trust hand-written totals in the HTML
+  ['column-todo','column-inprogress','column-blocked','column-done'].forEach(updateColumnCount);
+  ['sprint-4-group','backlog-group','epics-group','stories-group'].forEach(updateGroupCounts);
+
+  renderSprintsTab();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,14 @@
+{{/* Expects: model.Issue. Read-only display row used in Backlog/Sprint listings —
+     click through to the detail page for anything editable. */}}
+<div class="row" style="--card-color:{{.TypeColor}}" id="row-{{.ID}}">
+  <span class="type-icon" style="background:{{.TypeColor}}" title="{{.TypeName}}">{{.TypeIcon}}</span>
+  <span class="row-key">{{.Key}}</span>
+  <a class="row-summary" href="/issues/{{.IssueNumber}}"
+     hx-get="/issues/{{.IssueNumber}}" hx-target="#detail-panel-body" hx-swap="innerHTML">{{.Summary}}</a>
+  <div>{{range .Labels}}<span class="label-chip">{{.}}</span>{{end}}</div>
+  <div class="row-right">
+    <span title="Priority: {{priorityLabel .Priority}}">{{priorityIcon .Priority}}</span>
+    <span class="points-badge">{{pointsOrDash .StoryPoints}}</span>
+    <span class="status-pill {{statusClass .StatusCategory}}">{{upper .StatusName}}</span>
+  </div>
+</div>

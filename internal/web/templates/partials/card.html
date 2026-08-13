@@ -1,0 +1,17 @@
+{{/* Expects: model.Issue */}}
+<div class="card" style="--card-color:{{.TypeColor}}" id="card-{{.ID}}"
+     draggable="true" data-move-url="/issues/{{.IssueNumber}}/move">
+  <div class="card-top">
+    <span class="type-icon" style="background:{{.TypeColor}}" title="{{.TypeName}}">{{.TypeIcon}}</span>
+    <span class="card-key">{{.Key}}</span>
+  </div>
+  <a href="/issues/{{.IssueNumber}}"
+     hx-get="/issues/{{.IssueNumber}}" hx-target="#detail-panel-body" hx-swap="innerHTML">
+    <div class="card-summary">{{.Summary}}</div>
+  </a>
+  {{if .Labels}}<div>{{range .Labels}}<span class="label-chip">{{.}}</span>{{end}}</div>{{end}}
+  <div class="card-footer">
+    <span title="Priority: {{priorityLabel .Priority}}">{{priorityIcon .Priority}}</span>
+    <span class="points-badge">{{pointsOrDash .StoryPoints}}</span>
+  </div>
+</div>

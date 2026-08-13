@@ -1,0 +1,50 @@
+{{/* Expects: {Project, Current: []SprintHistoryEntry, Completed: []SprintHistoryEntry} */}}
+<p style="color:var(--text-muted);font-size:13px;line-height:1.5;margin:16px 24px 0 24px;max-width:640px;">
+  Completed sprints land here automatically — their issues are kept exactly as they were, including which ones didn't finish in time. Nothing is deleted when a sprint completes.
+</p>
+<div class="backlog-wrap">
+  {{if .Current}}
+  <div class="group">
+    <div class="group-header"><span class="group-title">Right now</span></div>
+    <div class="row-list">
+      {{range .Current}}
+      <div class="row">
+        <span class="sprint-state-badge state-{{.Sprint.State}}">{{upper .Sprint.State}}</span>
+        <a class="row-summary" href="/backlog">{{.Sprint.Name}}</a>
+      </div>
+      {{end}}
+    </div>
+  </div>
+  {{end}}
+
+  {{range .Completed}}
+  <div class="group">
+    <div class="group-header">
+      <span class="group-title">{{.Sprint.Name}}</span>
+      <span class="sprint-state-badge state-completed">COMPLETED</span>
+      <span class="group-sub">{{if .Sprint.StartDate}}{{.Sprint.StartDate}} – {{.Sprint.EndDate}} · {{end}}{{.Done}} of {{.Total}} completed</span>
+      <div class="group-header-spacer"></div>
+      <a class="btn btn-sm" href="/sprints/{{.Sprint.ID}}/report">Report</a>
+    </div>
+    <div class="row-list">
+      {{range .Rows}}
+      <div class="row" style="--card-color:{{.Issue.TypeColor}}">
+        <span class="type-icon" style="background:{{.Issue.TypeColor}}">{{.Issue.TypeIcon}}</span>
+        <span class="row-key">{{.Issue.Key}}</span>
+        <a class="row-summary" href="/issues/{{.Issue.IssueNumber}}"
+           hx-get="/issues/{{.Issue.IssueNumber}}" hx-target="#detail-panel-body" hx-swap="innerHTML">{{.Issue.Summary}}</a>
+        <div class="row-right">
+          {{if .Completed}}
+            <span class="status-pill status-done">DONE</span>
+          {{else}}
+            <span class="sprint-state-badge state-planned">↪ moved on ({{.StatusCategoryAtRemoval}})</span>
+          {{end}}
+        </div>
+      </div>
+      {{end}}
+    </div>
+  </div>
+  {{else}}
+  {{if not .Current}}<div class="empty-state">No sprints yet.</div>{{end}}
+  {{end}}
+</div>
