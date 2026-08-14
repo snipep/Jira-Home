@@ -49,5 +49,5 @@ func (s *Server) handleEpicsStories(w http.ResponseWriter, r *http.Request) {
 		data.Groups = append(data.Groups, TypeGroup{Type: t, Issues: group, Points: sumPoints(group)})
 	}
 
-	s.render(w, r, "epics_stories.html", data, "Epics & Stories", "epics-stories")
+	s.render(w, r, "epics_stories.html", data, "Epics", "epics-stories")
 }

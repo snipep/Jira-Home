@@ -63,12 +63,35 @@ func (s *Server) handleListSprints(w http.ResponseWriter, r *http.Request) {
 	}{project, current, completed}, "Sprints", "sprints")
 }
 
+type SprintFormData struct {
+	Project model.Project
+	Editing bool
+	Sprint  model.Sprint
+}
+
 func (s *Server) handleNewSprintForm(w http.ResponseWriter, r *http.Request) {
 	project, ok := s.currentProject(w, r)
 	if !ok {
 		return
 	}
-	s.render(w, r, "sprint_form.html", project, "New sprint", "backlog")
+	s.render(w, r, "sprint_form.html", SprintFormData{Project: project}, "New sprint", "backlog")
+}
+
+func (s *Server) handleEditSprintForm(w http.ResponseWriter, r *http.Request) {
+	project, ok := s.currentProject(w, r)
+	if !ok {
+		return
+	}
+	id, ok := pathInt64(w, r, "id")
+	if !ok {
+		return
+	}
+	sprint, err := s.store.GetSprintByID(id)
+	if err != nil {
+		s.renderError(w, r, http.StatusNotFound, err.Error())
+		return
+	}
+	s.render(w, r, "sprint_form.html", SprintFormData{Project: project, Editing: true, Sprint: sprint}, "Edit "+sprint.Name, "backlog")
 }
 
 func (s *Server) handleCreateSprint(w http.ResponseWriter, r *http.Request) {
@@ -81,7 +104,7 @@ func (s *Server) handleCreateSprint(w http.ResponseWriter, r *http.Request) {
 		s.renderError(w, r, http.StatusBadRequest, "Sprint name is required")
 		return
 	}
-	_, err := s.store.CreateSprint(project.ID, name, r.FormValue("goal"), r.FormValue("start_date"), r.FormValue("end_date"))
+	_, err := s.store.CreateSprint(project.ID, name, r.FormValue("goal"), r.FormValue("start_date"), r.FormValue("end_date"), formBool(r, "auto_complete"))
 	if err != nil {
 		s.renderError(w, r, http.StatusBadRequest, err.Error())
 		return
@@ -103,8 +126,20 @@ func (s *Server) handleUpdateSprint(w http.ResponseWriter, r *http.Request) {
 	if name == "" {
 		name = existing.Name
 	}
-	if err := s.store.UpdateSprint(id, name, r.FormValue("goal"), r.FormValue("start_date"), r.FormValue("end_date")); err != nil {
+	if err := s.store.UpdateSprint(id, name, r.FormValue("goal"), r.FormValue("start_date"), r.FormValue("end_date"), formBool(r, "auto_complete")); err != nil {
 		s.renderError(w, r, http.StatusInternalServerError, err.Error())
+		return
+	}
+	s.redirectToBacklog(w, r)
+}
+
+func (s *Server) handleDeleteSprint(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathInt64(w, r, "id")
+	if !ok {
+		return
+	}
+	if err := s.store.DeleteSprint(id); err != nil {
+		s.redirectWithError(w, r, "/backlog", err.Error())
 		return
 	}
 	s.redirectToBacklog(w, r)

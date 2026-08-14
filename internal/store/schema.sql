@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS sprint (
     start_date TEXT,
     end_date TEXT,
     state TEXT NOT NULL DEFAULT 'planned' CHECK (state IN ('planned','active','completed')),
+    auto_complete INTEGER NOT NULL DEFAULT 0, -- 1 = auto-complete on end_date and start a same-length successor
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -50,7 +51,7 @@ CREATE TABLE IF NOT EXISTS issue (
     summary TEXT NOT NULL,
     description TEXT,                       -- Markdown; rendered to sanitized HTML at display time
     status_id INTEGER NOT NULL REFERENCES status(id),
-    priority TEXT NOT NULL DEFAULT 'medium' CHECK (priority IN ('low','medium','high','urgent')),
+    priority TEXT NOT NULL DEFAULT 'medium' CHECK (priority IN ('lowest','low','medium','high','highest')),
     story_points INTEGER,
     due_date TEXT,
     sprint_id INTEGER REFERENCES sprint(id) ON DELETE SET NULL,  -- NULL = backlog
@@ -112,10 +113,10 @@ CREATE INDEX IF NOT EXISTS idx_comment_issue ON comment(issue_id);
 CREATE INDEX IF NOT EXISTS idx_sprint_issue_sprint ON sprint_issue(sprint_id);
 CREATE INDEX IF NOT EXISTS idx_sprint_issue_issue  ON sprint_issue(issue_id);
 
--- Seed data: default issue types and statuses (safe to re-run)
+-- Seed data: default issue types and statuses (safe to re-run). Hierarchy is
+-- Epic > Task/Bug (and any custom type) > Subtask — see validateParentTier.
 INSERT OR IGNORE INTO issue_type (name, color, icon, no_sprint, is_default) VALUES
     ('Epic',    '#8F7EE7', '⚡', 1, 1),
-    ('Story',   '#4BCE97', '🔖', 1, 1),
     ('Task',    '#579DFF', '✔', 0, 1),
     ('Subtask', '#85B8FF', '↳', 0, 1),
     ('Bug',     '#F87168', '🐞', 0, 1);

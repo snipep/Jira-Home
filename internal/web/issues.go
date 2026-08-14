@@ -35,8 +35,29 @@ type IssueFormData struct {
 	SprintID         *int64
 	Editing          bool
 	Issue            model.Issue
-	ParentCandidates []model.Issue // other issues in the project, selectable as this issue's parent
+	EpicCandidates   []model.Issue // Epic-tier issues — the parent for Task/Bug/anything else
+	TaskCandidates   []model.Issue // Task/Bug-tier issues — the parent for a Subtask
 	SelectedParentID *int64
+}
+
+// splitParentCandidates partitions a project's issues into the two tiers the
+// parent field can point at, per the Epic > Task/Bug > Subtask hierarchy
+// (see validateParentTier): Epic-tier issues (no_sprint) for everything
+// else's parent, and Task/Bug-tier issues (not Epic, not Subtask) for a
+// Subtask's parent. excludeID lets the edit form drop the issue being
+// edited out of its own candidate list.
+func splitParentCandidates(issues []model.Issue, excludeID int64) (epics, tasks []model.Issue) {
+	for _, iss := range issues {
+		if iss.ID == excludeID {
+			continue
+		}
+		if iss.TypeNoSprint {
+			epics = append(epics, iss)
+		} else if iss.TypeName != "Subtask" {
+			tasks = append(tasks, iss)
+		}
+	}
+	return epics, tasks
 }
 
 func (s *Server) handleNewIssueForm(w http.ResponseWriter, r *http.Request) {
@@ -49,17 +70,19 @@ func (s *Server) handleNewIssueForm(w http.ResponseWriter, r *http.Request) {
 		s.renderError(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
-	candidates, err := s.store.SearchIssues(&project.ID, "")
+	all, err := s.store.SearchIssues(&project.ID, "")
 	if err != nil {
 		s.renderError(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
+	epics, tasks := splitParentCandidates(all, 0)
 	data := IssueFormData{
 		Project:          project,
 		IssueTypes:       types,
 		SelectedType:     r.URL.Query().Get("type"),
 		SprintID:         queryInt64Ptr(r, "sprint_id"),
-		ParentCandidates: candidates,
+		EpicCandidates:   epics,
+		TaskCandidates:   tasks,
 		SelectedParentID: queryInt64Ptr(r, "parent_id"),
 	}
 	if data.SelectedType == "" {
@@ -155,7 +178,17 @@ func (s *Server) handleIssueDetail(w http.ResponseWriter, r *http.Request) {
 	if !ok || !iok {
 		return
 	}
+	s.renderIssueDetail(w, r, project, issue)
+}
 
+// renderIssueDetail is shared by every action that should land back on the
+// issue detail view without a full navigation: viewing it, and anything
+// that mutates the issue from inside the already-open sidebar (save,
+// add/remove a link, ...). Rendering the fragment directly — instead of an
+// HX-Redirect, which always forces a full browser navigation regardless of
+// hx-target — is what keeps those in the sidebar instead of bouncing to the
+// standalone page.
+func (s *Server) renderIssueDetail(w http.ResponseWriter, r *http.Request, project model.Project, issue model.Issue) {
 	comments, err := s.store.ListComments(issue.ID)
 	if err != nil {
 		s.renderError(w, r, http.StatusInternalServerError, err.Error())
@@ -213,15 +246,10 @@ func (s *Server) handleEditIssueForm(w http.ResponseWriter, r *http.Request) {
 		s.renderError(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
-	candidates := make([]model.Issue, 0, len(all))
-	for _, c := range all {
-		if c.ID != issue.ID {
-			candidates = append(candidates, c)
-		}
-	}
+	epics, tasks := splitParentCandidates(all, issue.ID)
 	s.render(w, r, "issue_form.html", IssueFormData{
 		Project: project, Editing: true, Issue: issue, SelectedType: issue.TypeName,
-		ParentCandidates: candidates, SelectedParentID: issue.ParentID,
+		EpicCandidates: epics, TaskCandidates: tasks, SelectedParentID: issue.ParentID,
 	}, "Edit "+issue.Key(), "")
 }
 
@@ -255,12 +283,16 @@ func (s *Server) handleUpdateIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	redirectTo := "/issues/" + strconv.Itoa(issue.IssueNumber)
-	if isHXRequest(r) {
-		w.Header().Set("HX-Redirect", redirectTo)
+	project, ok := s.currentProject(w, r)
+	if !ok {
 		return
 	}
-	http.Redirect(w, r, redirectTo, http.StatusFound)
+	updated, err := s.store.GetIssueByID(issue.ID)
+	if err != nil {
+		s.renderError(w, r, http.StatusInternalServerError, err.Error())
+		return
+	}
+	s.renderIssueDetail(w, r, project, updated)
 }
 
 func (s *Server) handleDeleteIssue(w http.ResponseWriter, r *http.Request) {

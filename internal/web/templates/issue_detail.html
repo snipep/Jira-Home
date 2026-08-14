@@ -43,32 +43,10 @@
 
   <div class="detail-field"><span class="detail-field-label">Priority</span><span>{{priorityIcon .Issue.Priority}} {{priorityLabel .Issue.Priority}}</span></div>
   <div class="detail-field"><span class="detail-field-label">Points</span><span>{{pointsOrDash .Issue.StoryPoints}}</span></div>
-  <div class="detail-field"><span class="detail-field-label">Due date</span><span>{{default "—" .Issue.DueDate}}</span></div>
   <div class="detail-field"><span class="detail-field-label">Labels</span><span>{{range .Issue.Labels}}<span class="label-chip">{{.}}</span>{{else}}—{{end}}</span></div>
-  <div class="detail-field"><span class="detail-field-label">Components</span><span>{{range .Issue.Components}}<span class="label-chip">{{.}}</span>{{else}}—{{end}}</span></div>
 
   <div class="detail-field-label">Description</div>
   <div class="detail-desc">{{default "No description yet." .Issue.Description}}</div>
-
-  <div style="margin-top:20px;">
-    <div class="detail-field-label" style="margin-bottom:8px;">Links</div>
-    {{range .Links}}
-    <div class="row" style="border-radius:6px;">
-      <span class="label-chip">{{if eq .LinkType "blocks"}}{{if eq .SourceIssueID $.Issue.ID}}blocks{{else}}blocked by{{end}}{{else}}relates to{{end}}</span>
-      <a class="row-summary" href="/issues/{{.OtherNumber}}"
-         hx-get="/issues/{{.OtherNumber}}" hx-target="#detail-panel-body" hx-swap="innerHTML">{{.OtherKey}} — {{.OtherSummary}}</a>
-      <button class="icon-btn" hx-delete="/issues/{{$.Issue.IssueNumber}}/links/{{.ID}}" hx-target="closest .row" hx-swap="outerHTML">✕</button>
-    </div>
-    {{end}}
-    <form hx-post="/issues/{{.Issue.IssueNumber}}/links" hx-target="body" style="display:flex;gap:8px;margin-top:8px;">
-      <select class="field-select" name="link_type" style="width:auto;">
-        <option value="blocks">blocks</option>
-        <option value="relates_to">relates to</option>
-      </select>
-      <input class="field-input" name="target_key" placeholder="{{.Project.KeyPrefix}}-12" style="width:auto;">
-      <button class="btn" type="submit">Add link</button>
-    </form>
-  </div>
 
   <div class="comment" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
     <div class="detail-field-label" style="margin-bottom:8px;">Comments</div>

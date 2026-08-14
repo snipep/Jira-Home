@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"jira-home/internal/store"
 	"jira-home/internal/web"
@@ -33,6 +34,21 @@ func main() {
 	}
 
 	server := web.NewServer(st)
+
+	// Sprint auto-cycling (Settings > Workspace) needs no external cron —
+	// checking hourly is plenty for day-granularity sprint boundaries, and
+	// running once immediately at startup means a rollover due while the
+	// app was stopped still happens promptly on the next launch.
+	go func() {
+		ticker := time.NewTicker(time.Hour)
+		defer ticker.Stop()
+		for {
+			if err := st.RunSprintAutoCycle(); err != nil {
+				log.Printf("sprint auto-cycle: %v", err)
+			}
+			<-ticker.C
+		}
+	}()
 
 	log.Printf("Jira Home listening on %s (db: %s)", addr, dbPath)
 	if err := http.ListenAndServe(addr, server); err != nil {

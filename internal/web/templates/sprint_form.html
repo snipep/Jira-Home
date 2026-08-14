@@ -1,28 +1,46 @@
-{{/* Expects: model.Project */}}
+{{/* Expects: SprintFormData */}}
 <div class="backlog-wrap">
-  <form class="form-card" hx-post="/sprints" hx-target="body">
-    <h2 style="margin-top:0;">New sprint</h2>
+  <form class="form-card"
+        {{if .Editing}}
+          hx-patch="/sprints/{{.Sprint.ID}}"
+        {{else}}
+          hx-post="/sprints"
+        {{end}}
+        hx-target="body">
+    <h2 style="margin-top:0;">{{if .Editing}}Edit {{.Sprint.Name}}{{else}}New sprint{{end}}</h2>
     <div class="field">
       <label class="field-label">Name</label>
-      <input class="field-input" name="name" required placeholder="Sprint 5">
+      <input class="field-input" name="name" required value="{{.Sprint.Name}}" placeholder="Sprint 5">
     </div>
     <div class="field">
       <label class="field-label">Goal <span style="font-weight:400;">(optional)</span></label>
-      <textarea class="field-textarea" name="goal" rows="2" placeholder="What are you trying to accomplish this sprint?"></textarea>
+      <textarea class="field-textarea" name="goal" rows="2" placeholder="What are you trying to accomplish this sprint?">{{.Sprint.Goal}}</textarea>
     </div>
     <div class="field-row">
       <div class="field">
         <label class="field-label">Start date</label>
-        <input class="field-input" type="date" name="start_date">
+        <input class="field-input" type="date" name="start_date" value="{{.Sprint.StartDate}}">
       </div>
       <div class="field">
         <label class="field-label">End date</label>
-        <input class="field-input" type="date" name="end_date">
+        <input class="field-input" type="date" name="end_date" value="{{.Sprint.EndDate}}">
       </div>
     </div>
+    <div class="field">
+      <label style="font-size:13px;color:var(--text);display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" name="auto_complete" {{if .Sprint.AutoComplete}}checked{{end}}>
+        Automatically complete this sprint (and start the next one) when it ends
+      </label>
+      <p class="field-hint">Needs an end date. On that date, unfinished work carries over and a same-length sprint starts right away — repeating until this is unchecked.</p>
+    </div>
     <div class="form-actions">
-      <a class="btn" href="/backlog">Cancel</a>
-      <button class="btn btn-primary" type="submit">Create sprint</button>
+      {{if .Editing}}
+        <a class="btn" href="/backlog">Cancel</a>
+        <button class="btn btn-primary" type="submit">Save changes</button>
+      {{else}}
+        <a class="btn" href="/backlog">Cancel</a>
+        <button class="btn btn-primary" type="submit">Create sprint</button>
+      {{end}}
     </div>
   </form>
 </div>

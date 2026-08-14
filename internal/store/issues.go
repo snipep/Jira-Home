@@ -142,6 +142,9 @@ func (s *Store) listIssues(where string, args []any, orderBy string) ([]model.Is
 	if err := s.attachLabelsAndComponents(out); err != nil {
 		return nil, err
 	}
+	if err := s.attachEpicAncestors(out); err != nil {
+		return nil, err
+	}
 	return out, nil
 }
 
@@ -226,6 +229,104 @@ func (s *Store) GetIssueByKey(projectID int64, issueNumber int) (model.Issue, er
 	return list[0], nil
 }
 
+// attachEpicAncestors resolves each issue's Epic-tier ancestor for display
+// in list views — a Task/Bug's own parent, or a Subtask's grandparent
+// (parent's parent) — in two batched queries total, not one per issue.
+// Mirrors attachLabelsAndComponents: mutates issues in place.
+func (s *Store) attachEpicAncestors(issues []model.Issue) error {
+	parentIDSet := map[int64]struct{}{}
+	for _, iss := range issues {
+		if iss.ParentID != nil {
+			parentIDSet[*iss.ParentID] = struct{}{}
+		}
+	}
+	if len(parentIDSet) == 0 {
+		return nil
+	}
+	parentIDs := make([]any, 0, len(parentIDSet))
+	for id := range parentIDSet {
+		parentIDs = append(parentIDs, id)
+	}
+
+	type ancestor struct {
+		id       int64
+		parentID *int64
+		noSprint bool
+		summary  string
+	}
+	byID := make(map[int64]ancestor, len(parentIDs))
+
+	loadAncestors := func(ids []any) error {
+		if len(ids) == 0 {
+			return nil
+		}
+		rows, err := s.db.Query(`
+			SELECT i.id, i.parent_id, t.no_sprint, i.summary
+			FROM issue i JOIN issue_type t ON t.id = i.issue_type_id
+			WHERE i.id IN (`+placeholders(len(ids))+`)`, ids...)
+		if err != nil {
+			return fmt.Errorf("load epic ancestors: %w", err)
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var a ancestor
+			var parentID sql.NullInt64
+			if err := rows.Scan(&a.id, &parentID, &a.noSprint, &a.summary); err != nil {
+				return err
+			}
+			if parentID.Valid {
+				v := parentID.Int64
+				a.parentID = &v
+			}
+			byID[a.id] = a
+		}
+		return rows.Err()
+	}
+
+	if err := loadAncestors(parentIDs); err != nil {
+		return err
+	}
+
+	// A parent that's itself not Epic-tier means the real issue is a
+	// Subtask — its parent's parent (the grandparent) needs a second hop.
+	var grandparentIDs []any
+	seen := map[int64]struct{}{}
+	for _, a := range byID {
+		if !a.noSprint && a.parentID != nil {
+			if _, ok := seen[*a.parentID]; !ok {
+				seen[*a.parentID] = struct{}{}
+				grandparentIDs = append(grandparentIDs, *a.parentID)
+			}
+		}
+	}
+	if err := loadAncestors(grandparentIDs); err != nil {
+		return err
+	}
+
+	for i := range issues {
+		if issues[i].ParentID == nil {
+			continue
+		}
+		parent, ok := byID[*issues[i].ParentID]
+		if !ok {
+			continue
+		}
+		if parent.noSprint {
+			issues[i].EpicID = &parent.id
+			issues[i].EpicSummary = parent.summary
+			continue
+		}
+		if parent.parentID == nil {
+			continue
+		}
+		if grandparent, ok := byID[*parent.parentID]; ok && grandparent.noSprint {
+			issues[i].EpicID = &grandparent.id
+			issues[i].EpicSummary = grandparent.summary
+		}
+	}
+	return nil
+}
+
 func (s *Store) attachLabelsAndComponents(issues []model.Issue) error {
 	if len(issues) == 0 {
 		return nil
@@ -275,6 +376,58 @@ func (s *Store) attachLabelsAndComponents(issues []model.Issue) error {
 	return compRows.Err()
 }
 
+// getIssueTierInfo fetches just enough about an issue to validate the
+// parent hierarchy below — its own type's name and no_sprint flag — without
+// pulling the full issue (labels/components included), which matters here
+// because it must stay tx-safe (see the querier comment above) and a full
+// GetIssueByID goes through s.db directly.
+func getIssueTierInfo(q querier, id int64) (typeName string, noSprint bool, err error) {
+	err = q.QueryRow(`
+		SELECT t.name, t.no_sprint FROM issue i JOIN issue_type t ON t.id = i.issue_type_id WHERE i.id = ?`, id).
+		Scan(&typeName, &noSprint)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", false, ErrNotFound
+	}
+	return typeName, noSprint, err
+}
+
+// validateParentTier enforces the Epic > Task/Bug > Subtask hierarchy:
+// Epic-tier (no_sprint) issues never have a parent; a Subtask's parent must
+// be a non-Epic, non-Subtask issue; every other type's parent must be an
+// Epic. Returns the parent id to actually persist (nil for Epic-tier,
+// regardless of what was submitted). Pass required=false to let a nil
+// parent through unvalidated — used on edit, so fixing an unrelated field on
+// an older issue that predates this rule isn't blocked.
+func validateParentTier(q querier, issueType model.IssueType, parentID *int64, required bool) (*int64, error) {
+	if issueType.NoSprint {
+		return nil, nil
+	}
+	if parentID == nil {
+		if !required {
+			return nil, nil
+		}
+		if issueType.Name == "Subtask" {
+			return nil, fmt.Errorf("a subtask needs a parent task — create a Task or Bug under an epic first")
+		}
+		return nil, fmt.Errorf("%s needs a parent epic — create an Epic first", issueType.Name)
+	}
+	parentTypeName, parentNoSprint, err := getIssueTierInfo(q, *parentID)
+	if errors.Is(err, ErrNotFound) {
+		return nil, fmt.Errorf("parent issue not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+	if issueType.Name == "Subtask" {
+		if parentNoSprint || parentTypeName == "Subtask" {
+			return nil, fmt.Errorf("a subtask's parent must be a task or bug, not an epic or another subtask")
+		}
+	} else if !parentNoSprint {
+		return nil, fmt.Errorf("parent must be an epic")
+	}
+	return parentID, nil
+}
+
 // NewIssueInput is what a create-issue form submits.
 type NewIssueInput struct {
 	IssueTypeID int64
@@ -305,6 +458,11 @@ func (s *Store) CreateIssue(projectID int64, in NewIssueInput) (model.Issue, err
 		sprintID = nil
 	}
 
+	parentID, err := validateParentTier(tx, issueType, in.ParentID, true)
+	if err != nil {
+		return model.Issue{}, err
+	}
+
 	num, err := s.NextIssueNumber(tx, projectID)
 	if err != nil {
 		return model.Issue{}, err
@@ -324,7 +482,7 @@ func (s *Store) CreateIssue(projectID int64, in NewIssueInput) (model.Issue, err
 		INSERT INTO issue (project_id, issue_number, issue_type_id, parent_id, summary, description,
 			status_id, priority, story_points, due_date, sprint_id, position)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
-		projectID, num, in.IssueTypeID, in.ParentID, in.Summary, in.Description,
+		projectID, num, in.IssueTypeID, parentID, in.Summary, in.Description,
 		status.ID, priority, in.StoryPoints, nullIfEmpty(in.DueDate), sprintID)
 	if err != nil {
 		return model.Issue{}, fmt.Errorf("insert issue: %w", err)
@@ -397,11 +555,22 @@ func (s *Store) UpdateIssue(id int64, in UpdateIssueInput) error {
 	}
 	defer tx.Rollback()
 
+	typeName, noSprint, err := getIssueTierInfo(tx, id)
+	if err != nil {
+		return fmt.Errorf("issue type: %w", err)
+	}
+	// required=false: editing an issue that predates this rule shouldn't be
+	// blocked just because it still has no parent.
+	parentID, err := validateParentTier(tx, model.IssueType{Name: typeName, NoSprint: noSprint}, in.ParentID, false)
+	if err != nil {
+		return err
+	}
+
 	_, err = tx.Exec(`
 		UPDATE issue SET summary = ?, description = ?, priority = ?, story_points = ?, due_date = ?,
 			parent_id = ?, updated_at = datetime('now')
 		WHERE id = ?`,
-		in.Summary, in.Description, in.Priority, in.StoryPoints, nullIfEmpty(in.DueDate), in.ParentID, id)
+		in.Summary, in.Description, in.Priority, in.StoryPoints, nullIfEmpty(in.DueDate), parentID, id)
 	if err != nil {
 		return fmt.Errorf("update issue: %w", err)
 	}

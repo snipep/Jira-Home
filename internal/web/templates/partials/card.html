@@ -1,5 +1,5 @@
 {{/* Expects: model.Issue */}}
-<div class="card" style="--card-color:{{.TypeColor}}" id="card-{{.ID}}"
+<div class="card" style="--card-color:{{if .EpicID}}{{epicColor .EpicID}}{{else}}{{.TypeColor}}{{end}}" id="card-{{.ID}}"
      draggable="true" data-move-url="/issues/{{.IssueNumber}}/move">
   <div class="card-top">
     <span class="type-icon" style="background:{{.TypeColor}}" title="{{.TypeName}}">{{.TypeIcon}}</span>
@@ -10,6 +10,13 @@
     <div class="card-summary">{{.Summary}}</div>
   </a>
   {{if .Labels}}<div>{{range .Labels}}<span class="label-chip">{{.}}</span>{{end}}</div>{{end}}
+  {{if .EpicID}}
+  <div style="margin-bottom:8px;">
+    <span class="epic-chip" style="--epic-color:{{epicColor .EpicID}};max-width:100%;" title="Epic: {{.EpicSummary}}">
+      <span class="epic-chip-swatch"></span>{{.EpicSummary}}
+    </span>
+  </div>
+  {{end}}
   <div class="card-footer">
     <span title="Priority: {{priorityLabel .Priority}}">{{priorityIcon .Priority}}</span>
     <span class="points-badge">{{pointsOrDash .StoryPoints}}</span>

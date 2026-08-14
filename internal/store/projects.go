@@ -10,10 +10,16 @@ import (
 
 var ErrNotFound = errors.New("not found")
 
+const projectSelectCols = `id, key_prefix, name, description, next_issue_number, created_at, updated_at`
+
+func scanProject(row scanner) (model.Project, error) {
+	var p model.Project
+	err := row.Scan(&p.ID, &p.KeyPrefix, &p.Name, &p.Description, &p.NextIssueNumber, &p.CreatedAt, &p.UpdatedAt)
+	return p, err
+}
+
 func (s *Store) ListProjects() ([]model.Project, error) {
-	rows, err := s.db.Query(`
-		SELECT id, key_prefix, name, description, next_issue_number, created_at, updated_at
-		FROM project ORDER BY name`)
+	rows, err := s.db.Query(`SELECT ` + projectSelectCols + ` FROM project ORDER BY name`)
 	if err != nil {
 		return nil, fmt.Errorf("list projects: %w", err)
 	}
@@ -21,8 +27,8 @@ func (s *Store) ListProjects() ([]model.Project, error) {
 
 	var out []model.Project
 	for rows.Next() {
-		var p model.Project
-		if err := rows.Scan(&p.ID, &p.KeyPrefix, &p.Name, &p.Description, &p.NextIssueNumber, &p.CreatedAt, &p.UpdatedAt); err != nil {
+		p, err := scanProject(rows)
+		if err != nil {
 			return nil, fmt.Errorf("scan project: %w", err)
 		}
 		out = append(out, p)
@@ -31,11 +37,8 @@ func (s *Store) ListProjects() ([]model.Project, error) {
 }
 
 func (s *Store) GetProjectByKey(keyPrefix string) (model.Project, error) {
-	var p model.Project
-	err := s.db.QueryRow(`
-		SELECT id, key_prefix, name, description, next_issue_number, created_at, updated_at
-		FROM project WHERE key_prefix = ?`, keyPrefix).
-		Scan(&p.ID, &p.KeyPrefix, &p.Name, &p.Description, &p.NextIssueNumber, &p.CreatedAt, &p.UpdatedAt)
+	row := s.db.QueryRow(`SELECT `+projectSelectCols+` FROM project WHERE key_prefix = ?`, keyPrefix)
+	p, err := scanProject(row)
 	if errors.Is(err, sql.ErrNoRows) {
 		return p, ErrNotFound
 	}
@@ -60,11 +63,8 @@ func (s *Store) CreateProject(keyPrefix, name, description string) (model.Projec
 }
 
 func (s *Store) GetProjectByID(id int64) (model.Project, error) {
-	var p model.Project
-	err := s.db.QueryRow(`
-		SELECT id, key_prefix, name, description, next_issue_number, created_at, updated_at
-		FROM project WHERE id = ?`, id).
-		Scan(&p.ID, &p.KeyPrefix, &p.Name, &p.Description, &p.NextIssueNumber, &p.CreatedAt, &p.UpdatedAt)
+	row := s.db.QueryRow(`SELECT `+projectSelectCols+` FROM project WHERE id = ?`, id)
+	p, err := scanProject(row)
 	if errors.Is(err, sql.ErrNoRows) {
 		return p, ErrNotFound
 	}

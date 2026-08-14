@@ -1,18 +1,17 @@
 {{/* Expects: IssueFormData */}}
 <div class="backlog-wrap">
-  <form class="form-card"
+  <form class="form-card" data-type-name="{{.SelectedType}}"
         {{if .Editing}}
-          hx-patch="/issues/{{.Issue.IssueNumber}}"
+          hx-patch="/issues/{{.Issue.IssueNumber}}" hx-target="#detail-panel-body" hx-swap="innerHTML"
         {{else}}
-          hx-post="/issues"
-        {{end}}
-        hx-target="body">
+          hx-post="/issues" hx-target="body"
+        {{end}}>
     <h2 style="margin-top:0;">{{if .Editing}}Edit {{.Issue.Key}}{{else}}Create issue{{end}}</h2>
 
     {{if not .Editing}}
     <div class="field">
       <label class="field-label">Type</label>
-      <select class="field-select" name="type" onchange="toggleParentField(this)">
+      <select class="field-select" name="type" onchange="applyParentFieldVisibility(this.closest('form'))">
         {{range .IssueTypes}}<option value="{{.Name}}" {{if eq .Name $.SelectedType}}selected{{end}}>{{.Icon}} {{.Name}}</option>{{end}}
       </select>
     </div>
@@ -24,23 +23,35 @@
       <input class="field-input" name="summary" required value="{{.Issue.Summary}}" placeholder="What needs doing?">
     </div>
 
-    <div class="field parent-field" style="{{if ne .SelectedType "Subtask"}}display:none;{{end}}">
-      <label class="field-label">Parent <span style="font-weight:400;">(the task this subtask belongs to)</span></label>
-      <select class="field-select" name="parent_id">
-        <option value="">No parent</option>
-        {{range .ParentCandidates}}<option value="{{.ID}}" {{if int64PtrEq $.SelectedParentID .ID}}selected{{end}}>{{.Key}} — {{.Summary}}</option>{{end}}
+    <div class="field parent-field" id="parent-epic-field" style="display:none;">
+      <label class="field-label">Epic</label>
+      <select class="field-select" name="parent_id" id="parent-epic-select" disabled>
+        <option value="">— select an epic —</option>
+        {{range .EpicCandidates}}<option value="{{.ID}}" {{if int64PtrEq $.SelectedParentID .ID}}selected{{end}}>{{.Key}} — {{.Summary}}</option>{{end}}
       </select>
+      {{if not .EpicCandidates}}<p class="field-hint">No epics yet — <a href="/issues/new?type=Epic">create one first</a>.</p>{{end}}
     </div>
+
+    <div class="field parent-field" id="parent-task-field" style="display:none;">
+      <label class="field-label">Parent task</label>
+      <select class="field-select" name="parent_id" id="parent-task-select" disabled>
+        <option value="">— select a task —</option>
+        {{range .TaskCandidates}}<option value="{{.ID}}" {{if int64PtrEq $.SelectedParentID .ID}}selected{{end}}>{{.Key}} — {{.Summary}}</option>{{end}}
+      </select>
+      {{if not .TaskCandidates}}<p class="field-hint">No tasks yet — create a Task or Bug under an epic first.</p>{{end}}
+    </div>
+    <script>applyParentFieldVisibility(document.currentScript.closest('form'));</script>
 
     <div class="field-row">
       <div class="field">
         <label class="field-label">Priority</label>
         <select class="field-select" name="priority">
           {{$p := .Issue.Priority}}
-          <option value="low" {{if eq $p "low"}}selected{{end}}>Low</option>
-          <option value="medium" {{if or (eq $p "medium") (eq $p "")}}selected{{end}}>Medium</option>
+          <option value="highest" {{if eq $p "highest"}}selected{{end}}>Highest</option>
           <option value="high" {{if eq $p "high"}}selected{{end}}>High</option>
-          <option value="urgent" {{if eq $p "urgent"}}selected{{end}}>Urgent</option>
+          <option value="medium" {{if or (eq $p "medium") (eq $p "")}}selected{{end}}>Medium</option>
+          <option value="low" {{if eq $p "low"}}selected{{end}}>Low</option>
+          <option value="lowest" {{if eq $p "lowest"}}selected{{end}}>Lowest</option>
         </select>
       </div>
       <div class="field">
@@ -49,15 +60,9 @@
       </div>
     </div>
 
-    <div class="field-row">
-      <div class="field">
-        <label class="field-label">Labels <span style="font-weight:400;">(comma separated)</span></label>
-        <input class="field-input" name="labels" value="{{join .Issue.Labels ", "}}" placeholder="frontend, backend">
-      </div>
-      <div class="field">
-        <label class="field-label">Due date</label>
-        <input class="field-input" type="date" name="due_date" value="{{.Issue.DueDate}}">
-      </div>
+    <div class="field">
+      <label class="field-label">Labels <span style="font-weight:400;">(comma separated)</span></label>
+      <input class="field-input" name="labels" value="{{join .Issue.Labels ", "}}" placeholder="frontend, backend">
     </div>
 
     <div class="field">

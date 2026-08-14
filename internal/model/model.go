@@ -31,13 +31,14 @@ type Status struct {
 }
 
 type Sprint struct {
-	ID        int64
-	ProjectID int64
-	Name      string
-	Goal      string
-	StartDate string
-	EndDate   string
-	State     string // planned | active | completed
+	ID           int64
+	ProjectID    int64
+	Name         string
+	Goal         string
+	StartDate    string
+	EndDate      string
+	State        string // planned | active | completed
+	AutoComplete bool   // auto-complete on end_date, starting a same-length successor
 }
 
 // Issue is the core entity, denormalized with the joined fields templates
@@ -69,6 +70,13 @@ type Issue struct {
 	SprintName     string
 	Labels         []string
 	Components     []string
+
+	// EpicID/EpicSummary identify this issue's Epic-tier ancestor in list
+	// views (Board/Backlog/search) — its own parent for a Task/Bug, or its
+	// grandparent for a Subtask (see Store.attachEpicAncestors). Nil for an
+	// Epic itself, or for an issue with no parent yet.
+	EpicID      *int64
+	EpicSummary string
 }
 
 // Key is the computed, never-stored issue key (e.g. "WEB-42").

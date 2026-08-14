@@ -12,7 +12,7 @@
 </div>
 {{if .Error}}<div class="banner-error">{{.Error}}</div>{{end}}
 <p style="color:var(--text-muted);font-size:13px;line-height:1.5;margin:16px 24px 0 24px;max-width:640px;">
-  A type can't be deleted while any issue still uses it. "No sprint" types (Epic, Story) span multiple sprints or aren't sprint items at all, and are managed in their own Epics &amp; Stories view instead of the backlog.
+  A type can't be deleted while any issue still uses it. "No sprint" types (Epic by default) sit at the top of the hierarchy — they're never scheduled into a sprint, and are managed in their own Epics view instead of the backlog. Every other type needs an Epic parent; Subtask needs a Task/Bug parent instead.
 </p>
 <div class="backlog-wrap">
   <div class="group">

@@ -4,14 +4,23 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"jira-home/internal/model"
 )
 
+const sprintDateLayout = "2006-01-02"
+
+const sprintSelectCols = `id, project_id, name, COALESCE(goal, ''), COALESCE(start_date, ''), COALESCE(end_date, ''), state, auto_complete`
+
+func scanSprint(row scanner) (model.Sprint, error) {
+	var sp model.Sprint
+	err := row.Scan(&sp.ID, &sp.ProjectID, &sp.Name, &sp.Goal, &sp.StartDate, &sp.EndDate, &sp.State, &sp.AutoComplete)
+	return sp, err
+}
+
 func (s *Store) ListSprints(projectID int64) ([]model.Sprint, error) {
-	rows, err := s.db.Query(`
-		SELECT id, project_id, name, COALESCE(goal, ''), COALESCE(start_date, ''), COALESCE(end_date, ''), state
-		FROM sprint WHERE project_id = ? ORDER BY start_date`, projectID)
+	rows, err := s.db.Query(`SELECT `+sprintSelectCols+` FROM sprint WHERE project_id = ? ORDER BY start_date`, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("list sprints: %w", err)
 	}
@@ -19,8 +28,8 @@ func (s *Store) ListSprints(projectID int64) ([]model.Sprint, error) {
 
 	var out []model.Sprint
 	for rows.Next() {
-		var sp model.Sprint
-		if err := rows.Scan(&sp.ID, &sp.ProjectID, &sp.Name, &sp.Goal, &sp.StartDate, &sp.EndDate, &sp.State); err != nil {
+		sp, err := scanSprint(rows)
+		if err != nil {
 			return nil, fmt.Errorf("scan sprint: %w", err)
 		}
 		out = append(out, sp)
@@ -29,11 +38,8 @@ func (s *Store) ListSprints(projectID int64) ([]model.Sprint, error) {
 }
 
 func (s *Store) GetSprintByID(id int64) (model.Sprint, error) {
-	var sp model.Sprint
-	err := s.db.QueryRow(`
-		SELECT id, project_id, name, COALESCE(goal, ''), COALESCE(start_date, ''), COALESCE(end_date, ''), state
-		FROM sprint WHERE id = ?`, id).
-		Scan(&sp.ID, &sp.ProjectID, &sp.Name, &sp.Goal, &sp.StartDate, &sp.EndDate, &sp.State)
+	row := s.db.QueryRow(`SELECT `+sprintSelectCols+` FROM sprint WHERE id = ?`, id)
+	sp, err := scanSprint(row)
 	if errors.Is(err, sql.ErrNoRows) {
 		return sp, ErrNotFound
 	}
@@ -43,10 +49,10 @@ func (s *Store) GetSprintByID(id int64) (model.Sprint, error) {
 	return sp, nil
 }
 
-func (s *Store) CreateSprint(projectID int64, name, goal, startDate, endDate string) (model.Sprint, error) {
+func (s *Store) CreateSprint(projectID int64, name, goal, startDate, endDate string, autoComplete bool) (model.Sprint, error) {
 	res, err := s.db.Exec(`
-		INSERT INTO sprint (project_id, name, goal, start_date, end_date) VALUES (?, ?, ?, ?, ?)`,
-		projectID, name, nullIfEmpty(goal), nullIfEmpty(startDate), nullIfEmpty(endDate))
+		INSERT INTO sprint (project_id, name, goal, start_date, end_date, auto_complete) VALUES (?, ?, ?, ?, ?, ?)`,
+		projectID, name, nullIfEmpty(goal), nullIfEmpty(startDate), nullIfEmpty(endDate), autoComplete)
 	if err != nil {
 		return model.Sprint{}, fmt.Errorf("create sprint: %w", err)
 	}
@@ -57,11 +63,29 @@ func (s *Store) CreateSprint(projectID int64, name, goal, startDate, endDate str
 	return s.GetSprintByID(id)
 }
 
-func (s *Store) UpdateSprint(id int64, name, goal, startDate, endDate string) error {
-	_, err := s.db.Exec(`UPDATE sprint SET name = ?, goal = ?, start_date = ?, end_date = ? WHERE id = ?`,
-		name, nullIfEmpty(goal), nullIfEmpty(startDate), nullIfEmpty(endDate), id)
+func (s *Store) UpdateSprint(id int64, name, goal, startDate, endDate string, autoComplete bool) error {
+	_, err := s.db.Exec(`UPDATE sprint SET name = ?, goal = ?, start_date = ?, end_date = ?, auto_complete = ? WHERE id = ?`,
+		name, nullIfEmpty(goal), nullIfEmpty(startDate), nullIfEmpty(endDate), autoComplete, id)
 	if err != nil {
 		return fmt.Errorf("update sprint: %w", err)
+	}
+	return nil
+}
+
+// DeleteSprint removes a planned or active sprint — any issues currently in
+// it fall back to the backlog (issue.sprint_id is ON DELETE SET NULL).
+// Completed sprints are refused: they're permanent history, shown in the
+// Sprints view, and sprint_issue rows cascade-delete with them.
+func (s *Store) DeleteSprint(id int64) error {
+	sprint, err := s.GetSprintByID(id)
+	if err != nil {
+		return err
+	}
+	if sprint.State == "completed" {
+		return fmt.Errorf("can't delete a completed sprint — it's kept as history")
+	}
+	if _, err := s.db.Exec(`DELETE FROM sprint WHERE id = ?`, id); err != nil {
+		return fmt.Errorf("delete sprint: %w", err)
 	}
 	return nil
 }
@@ -171,6 +195,77 @@ func (s *Store) CompleteSprint(sprintID int64) error {
 		return fmt.Errorf("mark sprint completed: %w", err)
 	}
 	return nil
+}
+
+// RunSprintAutoCycle rolls over every active sprint whose auto_complete flag
+// is set and whose end_date has passed: it creates a same-length successor
+// starting the very next day (carrying auto_complete forward, so the chain
+// keeps going until someone turns it off), completes the old sprint into it
+// — reusing CompleteSprint so unfinished issues carry over exactly like a
+// manual completion — then starts the new one. Sprints without
+// auto_complete, or without an end_date to cycle off of, are left alone for
+// their owner to complete by hand. Safe to call on every tick: a no-op
+// unless a rollover is actually due.
+func (s *Store) RunSprintAutoCycle() error {
+	project, err := s.DefaultProject()
+	if err != nil {
+		return err
+	}
+	sprints, err := s.ListSprints(project.ID)
+	if err != nil {
+		return err
+	}
+
+	for _, sprint := range sprints {
+		if sprint.State != "active" || !sprint.AutoComplete || sprint.EndDate == "" {
+			continue
+		}
+		end, err := time.Parse(sprintDateLayout, sprint.EndDate)
+		if err != nil {
+			continue
+		}
+		rolloverAt := end.AddDate(0, 0, 1) // midnight of the day after end_date
+		if time.Now().Before(rolloverAt) {
+			continue // not due yet
+		}
+
+		length := 14 // fallback when start_date is missing, so length can't be derived
+		if sprint.StartDate != "" {
+			if start, err := time.Parse(sprintDateLayout, sprint.StartDate); err == nil {
+				if days := int(end.Sub(start).Hours()/24) + 1; days > 0 {
+					length = days
+				}
+			}
+		}
+
+		next, err := s.CreateSprint(project.ID, nextSprintName(sprint.Name), "",
+			rolloverAt.Format(sprintDateLayout), rolloverAt.AddDate(0, 0, length-1).Format(sprintDateLayout), true)
+		if err != nil {
+			return fmt.Errorf("create next sprint: %w", err)
+		}
+		// CompleteSprint's target is "the earliest-start planned sprint" —
+		// since next was just created with a concrete start_date, it's the
+		// one picked, so the carry-over lands exactly where expected.
+		if err := s.CompleteSprint(sprint.ID); err != nil {
+			return fmt.Errorf("auto-complete sprint %d: %w", sprint.ID, err)
+		}
+		if err := s.StartSprint(next.ID); err != nil {
+			return fmt.Errorf("auto-start sprint %d: %w", next.ID, err)
+		}
+	}
+	return nil
+}
+
+// nextSprintName tries "Sprint N" -> "Sprint N+1"; falls back to appending
+// " (2)" for anything that doesn't fit that pattern, so auto-cycled sprints
+// still get a sensible, distinct name from whatever the prior one was
+// called.
+func nextSprintName(prev string) string {
+	var n int
+	if _, err := fmt.Sscanf(prev, "Sprint %d", &n); err == nil {
+		return fmt.Sprintf("Sprint %d", n+1)
+	}
+	return prev + " (2)"
 }
 
 // SprintReport returns every issue ever a member of this sprint (via

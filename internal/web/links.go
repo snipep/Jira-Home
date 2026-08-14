@@ -30,12 +30,12 @@ func (s *Server) handleCreateLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	redirectTo := "/issues/" + strconv.Itoa(issue.IssueNumber)
-	if isHXRequest(r) {
-		w.Header().Set("HX-Redirect", redirectTo)
+	updated, err := s.store.GetIssueByID(issue.ID)
+	if err != nil {
+		s.renderError(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
-	http.Redirect(w, r, redirectTo, http.StatusFound)
+	s.renderIssueDetail(w, r, project, updated)
 }
 
 func (s *Server) handleDeleteLink(w http.ResponseWriter, r *http.Request) {

@@ -7,9 +7,28 @@ import (
 )
 
 type SprintSection struct {
-	Sprint model.Sprint
-	Issues []model.Issue
-	Points int
+	Sprint          model.Sprint
+	Issues          []model.Issue
+	Points          int
+	TodoCount       int
+	InProgressCount int
+	DoneCount       int
+}
+
+// countByStatusCategory tallies a sprint's issues into the three status
+// buckets the backlog header's mini count badges show.
+func countByStatusCategory(issues []model.Issue) (todo, inProgress, done int) {
+	for _, iss := range issues {
+		switch iss.StatusCategory {
+		case "done":
+			done++
+		case "in_progress":
+			inProgress++
+		default:
+			todo++
+		}
+	}
+	return todo, inProgress, done
 }
 
 type BacklogData struct {
@@ -17,6 +36,7 @@ type BacklogData struct {
 	SprintGroups []SprintSection
 	Backlog      []model.Issue
 	BacklogPts   int
+	Error        string
 }
 
 func sumPoints(issues []model.Issue) int {
@@ -41,7 +61,7 @@ func (s *Server) handleBacklog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := BacklogData{Project: project}
+	data := BacklogData{Project: project, Error: r.URL.Query().Get("error")}
 	for _, sp := range sprints {
 		if sp.State == "completed" {
 			continue // completed sprints live in the Sprints/History view, not here
@@ -51,7 +71,11 @@ func (s *Server) handleBacklog(w http.ResponseWriter, r *http.Request) {
 			s.renderError(w, r, http.StatusInternalServerError, err.Error())
 			return
 		}
-		data.SprintGroups = append(data.SprintGroups, SprintSection{Sprint: sp, Issues: issues, Points: sumPoints(issues)})
+		todo, inProgress, done := countByStatusCategory(issues)
+		data.SprintGroups = append(data.SprintGroups, SprintSection{
+			Sprint: sp, Issues: issues, Points: sumPoints(issues),
+			TodoCount: todo, InProgressCount: inProgress, DoneCount: done,
+		})
 	}
 
 	filter := parseIssueFilter(r)
