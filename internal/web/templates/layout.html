@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{if .Title}}{{.Title}} · {{end}}Jira Home</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMEM2NkU0Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzU3OURGRiIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CiAgPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0idXJsKCNnKSIvPgogIDx0ZXh0IHg9IjE2IiB5PSIyMiIgZm9udC1mYW1pbHk9Ii1hcHBsZS1zeXN0ZW0sSGVsdmV0aWNhLEFyaWFsLHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTUiIGZvbnQtd2VpZ2h0PSI4MDAiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkpIPC90ZXh0Pgo8L3N2Zz4K">
 <script>
   (function(){
     try{
@@ -24,6 +25,7 @@
     --status-todo-bg:#DCDFE4; --status-todo-text:#44546F;
     --status-inprogress-bg:#E9F2FF; --status-inprogress-text:#0C66E4;
     --status-done-bg:#DFFCF0; --status-done-text:#1F845A;
+    --status-retired-bg:#FFE9E6; --status-retired-text:#AE2E24;
     --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
   }
   :root[data-theme="dark"]{
@@ -35,6 +37,7 @@
     --status-todo-bg:#2C333A; --status-todo-text:#B6C2CF;
     --status-inprogress-bg:#1C2B41; --status-inprogress-text:#85B8FF;
     --status-done-bg:#1C3329; --status-done-text:#4BCE97;
+    --status-retired-bg:#42231F; --status-retired-text:#FF9C8F;
   }
   *{box-sizing:border-box;}
   html{color-scheme:light dark;}
@@ -86,6 +89,7 @@
   .status-todo{background:var(--status-todo-bg);color:var(--status-todo-text);}
   .status-inprogress{background:var(--status-inprogress-bg);color:var(--status-inprogress-text);}
   .status-done{background:var(--status-done-bg);color:var(--status-done-text);}
+  .status-retired{background:var(--status-retired-bg);color:var(--status-retired-text);}
 
   .board-columns{display:grid;grid-auto-flow:column;grid-auto-columns:270px;gap:16px;padding:0 24px 24px 24px;overflow-x:auto;align-items:start;}
   .board-column{background:var(--column-bg);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:120px;}
@@ -113,6 +117,9 @@
   .row{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);border-left:3px solid var(--card-color,transparent);}
   .row:last-child{border-bottom:none;}
   .row:hover{background:var(--bg);}
+  .row[draggable="true"]{cursor:grab;}
+  .row.dragging{opacity:.4;}
+  .row-list.drag-target{outline:2px dashed var(--brand);outline-offset:-2px;}
   .row-key{font-size:12px;color:var(--text-faint);font-weight:600;font-family:var(--font-mono);width:56px;flex-shrink:0;}
   .row-summary{flex:1;font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .row-right{display:flex;align-items:center;gap:10px;flex-shrink:0;}
@@ -152,6 +159,23 @@
   .comment-list{display:flex;flex-direction:column;gap:10px;margin:12px 0;}
   .comment-item{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:13px;line-height:1.5;}
   .comment-item-meta{font-size:11px;color:var(--text-faint);margin-bottom:4px;display:flex;gap:8px;align-items:center;}
+
+  /* ---------- Analysis charts (plain CSS, no chart library) ---------- */
+  .analysis-card{padding:16px 18px;}
+  .analysis-card+.analysis-card{border-top:1px solid var(--border);}
+  .analysis-card-header{display:flex;align-items:baseline;gap:10px;margin-bottom:12px;flex-wrap:wrap;}
+  .analysis-sprint-name{font-weight:600;font-size:14px;}
+  .analysis-metric{margin-bottom:10px;}
+  .analysis-metric:last-child{margin-bottom:0;}
+  .analysis-metric-label{display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:4px;}
+  .analysis-bar-track{height:8px;border-radius:4px;background:var(--border);overflow:hidden;}
+  .analysis-bar-fill{height:100%;background:var(--status-done-text);border-radius:4px;}
+  .velocity-chart{display:flex;align-items:flex-end;gap:14px;padding:16px 18px 0 18px;height:160px;}
+  .velocity-col{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:6px;}
+  .velocity-value{font-size:11px;font-weight:700;color:var(--text-muted);}
+  .velocity-bar{width:100%;max-width:36px;background:var(--status-done-text);border-radius:4px 4px 0 0;min-height:2px;}
+  .velocity-track{flex:1;width:100%;max-width:36px;display:flex;align-items:flex-end;border-bottom:2px solid var(--border);}
+  .velocity-label{font-size:11px;color:var(--text-faint);max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
   .banner-error{background:#FFECEB;color:#E2483D;border:1px solid #E2483D;border-radius:6px;padding:10px 14px;margin:16px 24px;font-size:13px;}
   :root[data-theme="dark"] .banner-error{background:#42231F;color:#FF9C8F;border-color:#FF9C8F;}
@@ -194,6 +218,7 @@
     <a class="tab {{if eq .Active "backlog"}}active{{end}}" href="/backlog">Backlog</a>
     <a class="tab {{if eq .Active "epics-stories"}}active{{end}}" href="/epics-stories">Epics</a>
     <a class="tab {{if eq .Active "sprints"}}active{{end}}" href="/sprints">Sprints</a>
+    <a class="tab {{if eq .Active "analysis"}}active{{end}}" href="/analysis">Analysis</a>
   </div>
 </div>
 
@@ -235,22 +260,32 @@
     document.querySelectorAll('.dropdown-menu.open').forEach((m) => m.classList.remove('open'));
   });
 
-  // Issue form: the parent field's tier depends on the issue type — an Epic
-  // has none, a Subtask's parent is a Task/Bug, and everything else's
-  // parent is an Epic (see validateParentTier server-side). Reads the type
-  // from the live Type <select> when creating, or the form's data-type-name
-  // when editing (type can't change after creation, so there's no select).
-  function applyParentFieldVisibility(form) {
+  // Issue form: which fields apply depends on the issue type. A no_sprint
+  // (Epic-tier) type has no parent and no story points — points are a
+  // sprint-estimation concept, and Epics span sprints rather than living in
+  // one. A Subtask's parent is a Task/Bug; everything else's parent is an
+  // Epic (see validateParentTier server-side). Reads no_sprint/type from the
+  // live Type <select>'s selected option when creating, or the form's
+  // data-no-sprint/data-type-name when editing (type can't change after
+  // creation, so there's no select then).
+  function applyIssueFormFieldVisibility(form) {
     if (!form) return;
     const typeSelect = form.querySelector('select[name="type"]');
+    const selectedOption = typeSelect ? typeSelect.selectedOptions[0] : null;
     const typeName = typeSelect ? typeSelect.value : form.dataset.typeName;
+    const noSprint = selectedOption ? selectedOption.dataset.noSprint === 'true' : form.dataset.noSprint === 'true';
+
     const epicField = form.querySelector('#parent-epic-field');
     const taskField = form.querySelector('#parent-task-field');
     const epicSelect = form.querySelector('#parent-epic-select');
     const taskSelect = form.querySelector('#parent-task-select');
+    const pointsField = form.querySelector('#story-points-field');
+
     [epicField, taskField].forEach((f) => { if (f) f.style.display = 'none'; });
     [epicSelect, taskSelect].forEach((s) => { if (s) { s.disabled = true; s.required = false; } });
-    if (typeName === 'Epic') return;
+    if (pointsField) pointsField.style.display = noSprint ? 'none' : '';
+    if (noSprint) return;
+
     if (typeName === 'Subtask') {
       if (taskField) taskField.style.display = '';
       if (taskSelect) { taskSelect.disabled = false; taskSelect.required = true; }
@@ -302,6 +337,47 @@
       const boardContent = document.getElementById('board-content');
       if (boardContent) htmx.ajax('GET', location.pathname + location.search, {target: boardContent, swap: 'outerHTML'});
     }).catch((err) => console.error('move failed', err));
+  });
+
+  // Generic drag-to-reorder for a vertical row-list: any `.row-list` marked
+  // with `data-reorder-url` gets its `.row[draggable="true"][data-id]`
+  // children made reorderable by drag-and-drop (used by Settings > Statuses).
+  // Rows are reordered live in the DOM as you drag, then the full new order
+  // is POSTed as repeated `id=` fields once the drag ends.
+  let reorderRow = null;
+  document.addEventListener('dragstart', (e) => {
+    const row = e.target.closest('.row-list[data-reorder-url] > .row[draggable="true"]');
+    if (!row) return;
+    reorderRow = row;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', row.dataset.id);
+    row.classList.add('dragging');
+  });
+  document.addEventListener('dragover', (e) => {
+    if (!reorderRow) return;
+    const list = reorderRow.closest('.row-list[data-reorder-url]');
+    const target = e.target.closest('.row-list[data-reorder-url] > .row');
+    if (!list || !target || target === reorderRow) return;
+    e.preventDefault();
+    const rect = target.getBoundingClientRect();
+    const before = (e.clientY - rect.top) < rect.height / 2;
+    list.insertBefore(reorderRow, before ? target : target.nextSibling);
+  });
+  document.addEventListener('dragend', (e) => {
+    const row = e.target.closest('.row-list[data-reorder-url] > .row[draggable="true"]');
+    if (!row) return;
+    row.classList.remove('dragging');
+    const list = row.closest('.row-list[data-reorder-url]');
+    reorderRow = null;
+    if (!list) return;
+    const ids = Array.from(list.querySelectorAll('.row[data-id]')).map((el) => el.dataset.id);
+    const body = new URLSearchParams();
+    ids.forEach((id) => body.append('id', id));
+    fetch(list.dataset.reorderUrl, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded', 'HX-Request': 'true'},
+      body: body.toString(),
+    }).catch((err) => console.error('reorder failed', err));
   });
 </script>
 

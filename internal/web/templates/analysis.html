@@ -1,0 +1,44 @@
+{{/* Expects: AnalysisData */}}
+<p style="color:var(--text-muted);font-size:13px;line-height:1.5;margin:16px 24px 0 24px;max-width:640px;">
+  How much work actually finished, per completed sprint. Computed live from sprint history — deleting a sprint removes it from here too.
+</p>
+{{if not .HasSprints}}
+<div class="empty-state">No completed sprints yet — this fills in as sprints finish.</div>
+{{else}}
+<div class="backlog-wrap">
+  <div class="group">
+    <div class="group-header"><span class="group-title">Points completed per sprint</span></div>
+    <div class="velocity-chart">
+      {{$max := .MaxPoints}}
+      {{range .Sprints}}
+      <div class="velocity-col" title="{{.Sprint.Name}}: {{.DonePoints}} of {{.TotalPoints}} points completed">
+        <span class="velocity-value">{{.DonePoints}}</span>
+        <div class="velocity-track">
+          <div class="velocity-bar" style="height:{{pct .DonePoints $max}}%;"></div>
+        </div>
+        <span class="velocity-label">{{.Sprint.Name}}</span>
+      </div>
+      {{end}}
+    </div>
+  </div>
+
+  <div class="group">
+    {{range .Sprints}}
+    <div class="analysis-card">
+      <div class="analysis-card-header">
+        <span class="analysis-sprint-name">{{.Sprint.Name}}</span>
+        <span class="group-sub">{{if .Sprint.StartDate}}{{.Sprint.StartDate}} – {{.Sprint.EndDate}}{{end}}</span>
+      </div>
+      <div class="analysis-metric">
+        <div class="analysis-metric-label"><span>Issues completed</span><span>{{.DoneIssues}} / {{.TotalIssues}}</span></div>
+        <div class="analysis-bar-track"><div class="analysis-bar-fill" style="width:{{pct .DoneIssues .TotalIssues}}%;"></div></div>
+      </div>
+      <div class="analysis-metric">
+        <div class="analysis-metric-label"><span>Points completed</span><span>{{.DonePoints}} / {{.TotalPoints}}</span></div>
+        <div class="analysis-bar-track"><div class="analysis-bar-fill" style="width:{{pct .DonePoints .TotalPoints}}%;"></div></div>
+      </div>
+    </div>
+    {{end}}
+  </div>
+</div>
+{{end}}

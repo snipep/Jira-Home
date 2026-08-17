@@ -133,16 +133,36 @@ func (s *Server) handleUpdateSprint(w http.ResponseWriter, r *http.Request) {
 	s.redirectToBacklog(w, r)
 }
 
+// backAfterSprintDelete sends the user back to wherever they deleted a
+// sprint from — the Backlog (deleting a planned/active sprint) or the
+// Sprints/History view (deleting a completed one) — using whichever of
+// htmx's current-URL header or the plain Referer is available.
+func backAfterSprintDelete(r *http.Request) string {
+	ref := r.Header.Get("HX-Current-URL")
+	if ref == "" {
+		ref = r.Referer()
+	}
+	if strings.Contains(ref, "/sprints") {
+		return "/sprints"
+	}
+	return "/backlog"
+}
+
 func (s *Server) handleDeleteSprint(w http.ResponseWriter, r *http.Request) {
 	id, ok := pathInt64(w, r, "id")
 	if !ok {
 		return
 	}
+	back := backAfterSprintDelete(r)
 	if err := s.store.DeleteSprint(id); err != nil {
-		s.redirectWithError(w, r, "/backlog", err.Error())
+		s.redirectWithError(w, r, back, err.Error())
 		return
 	}
-	s.redirectToBacklog(w, r)
+	if isHXRequest(r) {
+		w.Header().Set("HX-Redirect", back)
+		return
+	}
+	http.Redirect(w, r, back, http.StatusFound)
 }
 
 func (s *Server) handleStartSprint(w http.ResponseWriter, r *http.Request) {
@@ -184,8 +204,9 @@ func (s *Server) handleCompleteSprintPreview(w http.ResponseWriter, r *http.Requ
 		s.renderError(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
-	// Zero unfinished issues: skip the confirmation and complete immediately.
-	if target.UnfinishedCount == 0 {
+	// Nothing unfinished and nothing retired: skip the confirmation and
+	// complete immediately.
+	if target.UnfinishedCount == 0 && target.RetiredCount == 0 {
 		if err := s.store.CompleteSprint(id); err != nil {
 			s.renderError(w, r, http.StatusInternalServerError, err.Error())
 			return

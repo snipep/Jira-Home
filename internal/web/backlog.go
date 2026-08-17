@@ -13,30 +13,35 @@ type SprintSection struct {
 	TodoCount       int
 	InProgressCount int
 	DoneCount       int
+	RetiredCount    int
 }
 
-// countByStatusCategory tallies a sprint's issues into the three status
+// countByStatusCategory tallies a sprint's issues into the status-category
 // buckets the backlog header's mini count badges show.
-func countByStatusCategory(issues []model.Issue) (todo, inProgress, done int) {
+func countByStatusCategory(issues []model.Issue) (todo, inProgress, done, retired int) {
 	for _, iss := range issues {
 		switch iss.StatusCategory {
 		case "done":
 			done++
 		case "in_progress":
 			inProgress++
+		case "retired":
+			retired++
 		default:
 			todo++
 		}
 	}
-	return todo, inProgress, done
+	return todo, inProgress, done, retired
 }
 
 type BacklogData struct {
-	Project      model.Project
-	SprintGroups []SprintSection
-	Backlog      []model.Issue
-	BacklogPts   int
-	Error        string
+	Project         model.Project
+	SprintGroups    []SprintSection
+	Backlog         []model.Issue
+	BacklogPts      int
+	Retired         []model.Issue
+	RestoreStatusID int64 // target status a "Restore" action on a retired issue moves it to
+	Error           string
 }
 
 func sumPoints(issues []model.Issue) int {
@@ -71,10 +76,10 @@ func (s *Server) handleBacklog(w http.ResponseWriter, r *http.Request) {
 			s.renderError(w, r, http.StatusInternalServerError, err.Error())
 			return
 		}
-		todo, inProgress, done := countByStatusCategory(issues)
+		todo, inProgress, done, retired := countByStatusCategory(issues)
 		data.SprintGroups = append(data.SprintGroups, SprintSection{
 			Sprint: sp, Issues: issues, Points: sumPoints(issues),
-			TodoCount: todo, InProgressCount: inProgress, DoneCount: done,
+			TodoCount: todo, InProgressCount: inProgress, DoneCount: done, RetiredCount: retired,
 		})
 	}
 
@@ -86,6 +91,20 @@ func (s *Server) handleBacklog(w http.ResponseWriter, r *http.Request) {
 	}
 	data.Backlog = backlogIssues
 	data.BacklogPts = sumPoints(backlogIssues)
+
+	retired, err := s.store.ListRetired(project.ID)
+	if err != nil {
+		s.renderError(w, r, http.StatusInternalServerError, err.Error())
+		return
+	}
+	data.Retired = retired
+
+	restoreStatus, err := s.store.DefaultTodoStatus()
+	if err != nil {
+		s.renderError(w, r, http.StatusInternalServerError, err.Error())
+		return
+	}
+	data.RestoreStatusID = restoreStatus.ID
 
 	s.render(w, r, "backlog.html", data, "Backlog", "backlog")
 }

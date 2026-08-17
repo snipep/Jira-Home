@@ -32,15 +32,17 @@ func svgIcon(color, paths string) template.HTML {
 		color + `" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">` + paths + `</svg>`)
 }
 
-// statusCategoryClass maps a status's category (the only 3-way distinction
+// statusCategoryClass maps a status's category (the only 4-way distinction
 // the data model gives us — statuses themselves are user-renamable) to a
-// pill color: todo/in_progress/done.
+// pill color: todo/in_progress/done/retired.
 func statusCategoryClass(category string) string {
 	switch category {
 	case "done":
 		return "status-done"
 	case "in_progress":
 		return "status-inprogress"
+	case "retired":
+		return "status-retired"
 	default:
 		return "status-todo"
 	}
@@ -80,6 +82,12 @@ var templateFuncs = template.FuncMap{
 		return fmt.Sprintf("%d", *p)
 	},
 	"int64PtrEq": func(p *int64, id int64) bool { return p != nil && *p == id },
+	"pct": func(part, total int) int {
+		if total <= 0 {
+			return 0
+		}
+		return part * 100 / total
+	},
 	"epicColor":  epicColor,
 	"join":       strings.Join,
 	"fmtTime":    formatTimestamp,

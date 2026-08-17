@@ -42,7 +42,9 @@
   {{end}}
 
   <div class="detail-field"><span class="detail-field-label">Priority</span><span>{{priorityIcon .Issue.Priority}} {{priorityLabel .Issue.Priority}}</span></div>
+  {{if not .Issue.TypeNoSprint}}
   <div class="detail-field"><span class="detail-field-label">Points</span><span>{{pointsOrDash .Issue.StoryPoints}}</span></div>
+  {{end}}
   <div class="detail-field"><span class="detail-field-label">Labels</span><span>{{range .Issue.Labels}}<span class="label-chip">{{.}}</span>{{else}}—{{end}}</span></div>
 
   <div class="detail-field-label">Description</div>

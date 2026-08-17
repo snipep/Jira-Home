@@ -157,12 +157,23 @@ func (s *Store) ListBoard(projectID, sprintID int64, f IssueFilter) ([]model.Iss
 	return s.listIssues(strings.Join(where, " AND "), args, "st.sort_order, i.position, i.id")
 }
 
-// ListBacklog returns schedulable issues with no sprint assigned.
+// ListBacklog returns schedulable issues with no sprint assigned. Retired-
+// category issues are excluded — they live in the separate Retired holding
+// area (see ListRetired) instead of cluttering the normal backlog.
 func (s *Store) ListBacklog(projectID int64, f IssueFilter) ([]model.Issue, error) {
-	where := []string{"i.project_id = ?", "t.no_sprint = 0", "i.sprint_id IS NULL"}
+	where := []string{"i.project_id = ?", "t.no_sprint = 0", "i.sprint_id IS NULL", "st.category != 'retired'"}
 	args := []any{projectID}
 	f.apply(&where, &args)
 	return s.listIssues(strings.Join(where, " AND "), args, "i.position, i.id")
+}
+
+// ListRetired returns schedulable issues with no sprint assigned whose
+// status is retired-category — the "Retired" holding area shown below the
+// Backlog, kept separate from ListBacklog's result so retired tickets don't
+// clutter the normal backlog list.
+func (s *Store) ListRetired(projectID int64) ([]model.Issue, error) {
+	where := []string{"i.project_id = ?", "t.no_sprint = 0", "i.sprint_id IS NULL", "st.category = 'retired'"}
+	return s.listIssues(strings.Join(where, " AND "), []any{projectID}, "i.position, i.id")
 }
 
 // ListSprintIssuesCurrent returns whatever is CURRENTLY assigned to a given

@@ -72,17 +72,16 @@ func (s *Store) UpdateSprint(id int64, name, goal, startDate, endDate string, au
 	return nil
 }
 
-// DeleteSprint removes a planned or active sprint — any issues currently in
-// it fall back to the backlog (issue.sprint_id is ON DELETE SET NULL).
-// Completed sprints are refused: they're permanent history, shown in the
-// Sprints view, and sprint_issue rows cascade-delete with them.
+// DeleteSprint removes a sprint in any state, planned/active/completed —
+// including permanently from history, which also drops it from Analysis
+// (both read live from the sprint/sprint_issue tables, nothing to reconcile).
+// Any issue still pointing at it (an in-progress sprint's issues, or a
+// completed sprint's finished issues, which stay assigned per CompleteSprint)
+// falls back to the backlog (issue.sprint_id is ON DELETE SET NULL);
+// sprint_issue history rows cascade-delete with it.
 func (s *Store) DeleteSprint(id int64) error {
-	sprint, err := s.GetSprintByID(id)
-	if err != nil {
+	if _, err := s.GetSprintByID(id); err != nil {
 		return err
-	}
-	if sprint.State == "completed" {
-		return fmt.Errorf("can't delete a completed sprint — it's kept as history")
 	}
 	if _, err := s.db.Exec(`DELETE FROM sprint WHERE id = ?`, id); err != nil {
 		return fmt.Errorf("delete sprint: %w", err)
@@ -103,6 +102,7 @@ func (s *Store) StartSprint(id int64) error {
 // CompletionTarget describes where a sprint's unfinished issues will land.
 type CompletionTarget struct {
 	UnfinishedCount int
+	RetiredCount    int    // retired-category issues — always dropped to the Retired holding area, never carried to TargetSprintID
 	TargetSprintID  *int64 // nil means "the backlog"
 	TargetName      string // sprint name, or "Backlog"
 }
@@ -118,12 +118,19 @@ func (s *Store) PreviewCompletion(sprintID int64) (CompletionTarget, error) {
 	var unfinished int
 	err = s.db.QueryRow(`
 		SELECT COUNT(*) FROM issue i JOIN status st ON st.id = i.status_id
-		WHERE i.sprint_id = ? AND st.category != 'done'`, sprintID).Scan(&unfinished)
+		WHERE i.sprint_id = ? AND st.category NOT IN ('done', 'retired')`, sprintID).Scan(&unfinished)
 	if err != nil {
 		return CompletionTarget{}, fmt.Errorf("count unfinished: %w", err)
 	}
+	var retired int
+	err = s.db.QueryRow(`
+		SELECT COUNT(*) FROM issue i JOIN status st ON st.id = i.status_id
+		WHERE i.sprint_id = ? AND st.category = 'retired'`, sprintID).Scan(&retired)
+	if err != nil {
+		return CompletionTarget{}, fmt.Errorf("count retired: %w", err)
+	}
 
-	target := CompletionTarget{UnfinishedCount: unfinished, TargetName: "Backlog"}
+	target := CompletionTarget{UnfinishedCount: unfinished, RetiredCount: retired, TargetName: "Backlog"}
 	var targetID sql.NullInt64
 	var targetName sql.NullString
 	err = s.db.QueryRow(`
@@ -142,11 +149,15 @@ func (s *Store) PreviewCompletion(sprintID int64) (CompletionTarget, error) {
 }
 
 // CompleteSprint runs the algorithm from the design doc: unfinished issues
-// (status category != done) move to the earliest-starting planned sprint in
-// the project, or the backlog if none exists; their status is left
-// unchanged. Finished issues stay put, so they remain part of this sprint's
-// permanent history. Reuses MoveIssue so the sprint_issue bookkeeping is
-// exactly the same code path as any other sprint reassignment.
+// (status category not done, not retired) move to the earliest-starting
+// planned sprint in the project, or the backlog if none exists; their status
+// is left unchanged. Retired-category issues never carry to that target —
+// they're always dropped straight to the backlog (sprint_id cleared, no
+// reassignment), which is what puts them in the Retired holding area instead
+// of back in normal backlog/sprint flow (see Store.ListRetired). Finished
+// issues stay put, so they remain part of this sprint's permanent history.
+// Reuses MoveIssue so the sprint_issue bookkeeping is exactly the same code
+// path as any other sprint reassignment.
 func (s *Store) CompleteSprint(sprintID int64) error {
 	sprint, err := s.GetSprintByID(sprintID)
 	if err != nil {
@@ -161,25 +172,33 @@ func (s *Store) CompleteSprint(sprintID int64) error {
 		return err
 	}
 
-	rows, err := s.db.Query(`
-		SELECT i.id FROM issue i JOIN status st ON st.id = i.status_id
-		WHERE i.sprint_id = ? AND st.category != 'done'`, sprintID)
+	queryIDs := func(where string) ([]int64, error) {
+		rows, err := s.db.Query(`
+			SELECT i.id FROM issue i JOIN status st ON st.id = i.status_id
+			WHERE i.sprint_id = ? AND `+where, sprintID)
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+		var ids []int64
+		for rows.Next() {
+			var id int64
+			if err := rows.Scan(&id); err != nil {
+				return nil, err
+			}
+			ids = append(ids, id)
+		}
+		return ids, rows.Err()
+	}
+
+	unfinishedIDs, err := queryIDs("st.category NOT IN ('done', 'retired')")
 	if err != nil {
 		return fmt.Errorf("find unfinished issues: %w", err)
 	}
-	var unfinishedIDs []int64
-	for rows.Next() {
-		var id int64
-		if err := rows.Scan(&id); err != nil {
-			rows.Close()
-			return err
-		}
-		unfinishedIDs = append(unfinishedIDs, id)
+	retiredIDs, err := queryIDs("st.category = 'retired'")
+	if err != nil {
+		return fmt.Errorf("find retired issues: %w", err)
 	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	rows.Close()
 
 	for _, issueID := range unfinishedIDs {
 		move := MoveIssueInput{ClearSprint: true}
@@ -188,6 +207,11 @@ func (s *Store) CompleteSprint(sprintID int64) error {
 		}
 		if err := s.MoveIssue(issueID, move); err != nil {
 			return fmt.Errorf("move issue %d off completed sprint: %w", issueID, err)
+		}
+	}
+	for _, issueID := range retiredIDs {
+		if err := s.MoveIssue(issueID, MoveIssueInput{ClearSprint: true}); err != nil {
+			return fmt.Errorf("move retired issue %d off completed sprint: %w", issueID, err)
 		}
 	}
 

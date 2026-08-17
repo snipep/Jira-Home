@@ -46,6 +46,26 @@ func getStatusByID(q querier, id int64) (model.Status, error) {
 	return st, nil
 }
 
+// DefaultTodoStatus returns the first todo-category status in board-column
+// order — where a "Restore" action from the Retired holding area sends an
+// issue back into normal circulation. Falls back to the first status of any
+// category if somehow none is todo-category, so restore always has a target.
+func (s *Store) DefaultTodoStatus() (model.Status, error) {
+	statuses, err := s.ListStatuses()
+	if err != nil {
+		return model.Status{}, err
+	}
+	for _, st := range statuses {
+		if st.Category == "todo" {
+			return st, nil
+		}
+	}
+	if len(statuses) > 0 {
+		return statuses[0], nil
+	}
+	return model.Status{}, ErrNotFound
+}
+
 func (s *Store) GetStatusByName(name string) (model.Status, error) {
 	return getStatusByName(s.db, name)
 }

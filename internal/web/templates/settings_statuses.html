@@ -12,13 +12,13 @@
 </div>
 {{if .Error}}<div class="banner-error">{{.Error}}</div>{{end}}
 <p style="color:var(--text-muted);font-size:13px;line-height:1.5;margin:16px 24px 0 24px;max-width:640px;">
-  This list sets the Kanban board's column order. A status still in use by an issue can't be deleted until those issues are reassigned.
+  This list sets the Kanban board's column order — drag a status by its ⠿ handle to reorder. A status still in use by an issue can't be deleted until those issues are reassigned. Retired-category statuses pull their tickets out of the backlog into a separate Retired list once their sprint completes.
 </p>
 <div class="backlog-wrap">
   <div class="group">
-    <div class="row-list">
+    <div class="row-list" data-reorder-url="/settings/statuses/reorder">
       {{range .Statuses}}
-      <div class="row">
+      <div class="row" draggable="true" data-id="{{.ID}}">
         <span style="color:var(--text-faint);">⠿</span>
         <span class="row-summary">{{.Name}}</span>
         <div class="row-right">
@@ -33,6 +33,7 @@
       <select class="field-select" name="category" style="width:auto;">
         <option value="todo">To do category</option>
         <option value="in_progress">In progress category</option>
+        <option value="retired">Retired category</option>
         <option value="done">Done category</option>
       </select>
       <button class="btn btn-primary" type="submit">+ Add status</button>

@@ -25,6 +25,10 @@
       <span class="group-sub">{{if .Sprint.StartDate}}{{.Sprint.StartDate}} – {{.Sprint.EndDate}} · {{end}}{{.Done}} of {{.Total}} completed</span>
       <div class="group-header-spacer"></div>
       <a class="btn btn-sm" href="/sprints/{{.Sprint.ID}}/report">Report</a>
+      <button class="btn btn-sm btn-danger" hx-delete="/sprints/{{.Sprint.ID}}"
+              hx-confirm="Permanently delete {{.Sprint.Name}} from history? Its issues aren't deleted — any still assigned to it (its finished work) fall back to the Backlog. This also removes it from Analysis and can't be undone.">
+        Delete
+      </button>
     </div>
     <div class="row-list">
       {{range .Rows}}

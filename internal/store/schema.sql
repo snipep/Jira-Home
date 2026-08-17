@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS issue_type (
 CREATE TABLE IF NOT EXISTS status (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,              -- To Do, In Progress, Done, Blocked, ...
-    category TEXT NOT NULL DEFAULT 'todo' CHECK (category IN ('todo','in_progress','done')),
+    category TEXT NOT NULL DEFAULT 'todo' CHECK (category IN ('todo','in_progress','done','retired')),
     sort_order INTEGER NOT NULL DEFAULT 0   -- controls board column order
 );
 
@@ -102,7 +102,7 @@ CREATE TABLE IF NOT EXISTS sprint_issue (
     issue_id INTEGER NOT NULL REFERENCES issue(id) ON DELETE CASCADE,
     added_at TEXT NOT NULL DEFAULT (datetime('now')),
     removed_at TEXT,                        -- set when the issue leaves this sprint (moved, or carried over)
-    status_category_at_removal TEXT CHECK (status_category_at_removal IN ('todo','in_progress','done'))
+    status_category_at_removal TEXT CHECK (status_category_at_removal IN ('todo','in_progress','done','retired'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_issue_project ON issue(project_id);
@@ -125,4 +125,5 @@ INSERT OR IGNORE INTO status (name, category, sort_order) VALUES
     ('To Do', 'todo', 1),
     ('In Progress', 'in_progress', 2),
     ('Blocked', 'in_progress', 3),
-    ('Done', 'done', 4);
+    ('Retired', 'retired', 4),
+    ('Done', 'done', 5);

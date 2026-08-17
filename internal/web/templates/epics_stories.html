@@ -7,7 +7,7 @@
   <div class="group">
     <div class="group-header">
       <span class="group-title">{{.Type.Name}}{{if ne (len .Issues) 1}}s{{end}}</span>
-      <span class="group-sub">{{len .Issues}} issue{{if ne (len .Issues) 1}}s{{end}} · {{.Points}} point{{if ne .Points 1}}s{{end}}</span>
+      <span class="group-sub">{{len .Issues}} issue{{if ne (len .Issues) 1}}s{{end}}</span>
       <div class="group-header-spacer"></div>
       <a class="btn" href="/issues/new?type={{.Type.Name}}">+ Create {{.Type.Name}}</a>
     </div>
@@ -21,7 +21,6 @@
         <div>{{range .Labels}}<span class="label-chip">{{.}}</span>{{end}}</div>
         <div class="row-right">
           <span title="Priority: {{priorityLabel .Priority}}">{{priorityIcon .Priority}}</span>
-          <span class="points-badge">{{pointsOrDash .StoryPoints}}</span>
           <span class="status-pill {{statusClass .StatusCategory}}">{{upper .StatusName}}</span>
         </div>
         <div class="row-actions">

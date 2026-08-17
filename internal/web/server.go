@@ -79,6 +79,9 @@ func (s *Server) routes() {
 	m.HandleFunc("POST /sprints/{id}/complete", s.handleCompleteSprint)
 	m.HandleFunc("GET /sprints/{id}/report", s.handleSprintReport)
 
+	// Analysis
+	m.HandleFunc("GET /analysis", s.handleAnalysis)
+
 	// Global settings
 	m.HandleFunc("GET /settings/statuses", s.handleListStatuses)
 	m.HandleFunc("POST /settings/statuses", s.handleCreateStatus)

@@ -46,11 +46,23 @@ func Open(path string) (*Store, error) {
 		db.Close()
 		return nil, fmt.Errorf("migrate priority levels: %w", err)
 	}
+	if err := migrateStatusCategories(db); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("migrate status categories: %w", err)
+	}
+	if err := migrateSprintIssueCategories(db); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("migrate sprint_issue categories: %w", err)
+	}
 
 	st := &Store{db: db}
 	if err := st.removeUnusedSeedType("Story"); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("remove Story type: %w", err)
+	}
+	if err := st.ensureRetiredStatus(); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("ensure retired status: %w", err)
 	}
 	return st, nil
 }
@@ -173,6 +185,114 @@ func migratePriorityLevels(db *sql.DB) error {
 	return tx.Commit()
 }
 
+// migrateStatusCategories widens the status.category CHECK constraint to add
+// 'retired' (Retired/Invalid tickets), following the same rebuild procedure
+// as migratePriorityLevels since a CHECK can't be altered additively. No
+// existing row's category changes — this only makes the new value legal for
+// rows inserted afterward (ensureRetiredStatus below adds the seeded one).
+func migrateStatusCategories(db *sql.DB) error {
+	var tableSQL string
+	err := db.QueryRow(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'status'`).Scan(&tableSQL)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if strings.Contains(tableSQL, "'retired'") {
+		return nil // already widened
+	}
+
+	if _, err := db.Exec(`PRAGMA foreign_keys = OFF`); err != nil {
+		return err
+	}
+	defer db.Exec(`PRAGMA foreign_keys = ON`)
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(`
+		CREATE TABLE status_new (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT NOT NULL UNIQUE,
+			category TEXT NOT NULL DEFAULT 'todo' CHECK (category IN ('todo','in_progress','done','retired')),
+			sort_order INTEGER NOT NULL DEFAULT 0
+		)`); err != nil {
+		return fmt.Errorf("create status_new: %w", err)
+	}
+	if _, err := tx.Exec(`INSERT INTO status_new SELECT id, name, category, sort_order FROM status`); err != nil {
+		return fmt.Errorf("copy status rows: %w", err)
+	}
+	if _, err := tx.Exec(`DROP TABLE status`); err != nil {
+		return fmt.Errorf("drop old status table: %w", err)
+	}
+	if _, err := tx.Exec(`ALTER TABLE status_new RENAME TO status`); err != nil {
+		return fmt.Errorf("rename status_new: %w", err)
+	}
+	return tx.Commit()
+}
+
+// migrateSprintIssueCategories widens sprint_issue.status_category_at_removal
+// the same way, so a retired issue leaving a sprint (see CompleteSprint) can
+// record 'retired' as its departure category.
+func migrateSprintIssueCategories(db *sql.DB) error {
+	var tableSQL string
+	err := db.QueryRow(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'sprint_issue'`).Scan(&tableSQL)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if strings.Contains(tableSQL, "'retired'") {
+		return nil
+	}
+
+	if _, err := db.Exec(`PRAGMA foreign_keys = OFF`); err != nil {
+		return err
+	}
+	defer db.Exec(`PRAGMA foreign_keys = ON`)
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(`
+		CREATE TABLE sprint_issue_new (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			sprint_id INTEGER NOT NULL REFERENCES sprint(id) ON DELETE CASCADE,
+			issue_id INTEGER NOT NULL REFERENCES issue(id) ON DELETE CASCADE,
+			added_at TEXT NOT NULL DEFAULT (datetime('now')),
+			removed_at TEXT,
+			status_category_at_removal TEXT CHECK (status_category_at_removal IN ('todo','in_progress','done','retired'))
+		)`); err != nil {
+		return fmt.Errorf("create sprint_issue_new: %w", err)
+	}
+	if _, err := tx.Exec(`INSERT INTO sprint_issue_new SELECT id, sprint_id, issue_id, added_at, removed_at, status_category_at_removal FROM sprint_issue`); err != nil {
+		return fmt.Errorf("copy sprint_issue rows: %w", err)
+	}
+	if _, err := tx.Exec(`DROP TABLE sprint_issue`); err != nil {
+		return fmt.Errorf("drop old sprint_issue table: %w", err)
+	}
+	if _, err := tx.Exec(`ALTER TABLE sprint_issue_new RENAME TO sprint_issue`); err != nil {
+		return fmt.Errorf("rename sprint_issue_new: %w", err)
+	}
+	for _, stmt := range []string{
+		`CREATE INDEX IF NOT EXISTS idx_sprint_issue_sprint ON sprint_issue(sprint_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_sprint_issue_issue  ON sprint_issue(issue_id)`,
+	} {
+		if _, err := tx.Exec(stmt); err != nil {
+			return fmt.Errorf("recreate index: %w", err)
+		}
+	}
+	return tx.Commit()
+}
+
 // removeUnusedSeedType deletes a previously-seeded issue type that's no
 // longer part of the default set (Story, dropped for the Epic > Task/Bug >
 // Subtask hierarchy) — but only if nothing has come to depend on it. Same
@@ -188,6 +308,52 @@ func (s *Store) removeUnusedSeedType(name string) error {
 	}
 	_ = s.DeleteIssueType(t.ID) // ignore failure — still in use, leave it alone
 	return nil
+}
+
+// ensureRetiredStatus seeds a "Retired" status (category 'retired') for
+// databases created before that category existed, placed immediately before
+// the first Done-category column so it lands where the design calls for
+// without disturbing any custom statuses/reordering the user has already
+// made — every status at or after that position shifts down by one. A no-op
+// once any retired-category status exists (seeded or user-renamed/created).
+func (s *Store) ensureRetiredStatus() error {
+	var existing int
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM status WHERE category = 'retired'`).Scan(&existing); err != nil {
+		return fmt.Errorf("check retired status: %w", err)
+	}
+	if existing > 0 {
+		return nil
+	}
+
+	var doneOrder sql.NullInt64
+	err := s.db.QueryRow(`SELECT MIN(sort_order) FROM status WHERE category = 'done'`).Scan(&doneOrder)
+	if err != nil {
+		return fmt.Errorf("find done order: %w", err)
+	}
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	insertOrder := int64(0)
+	if doneOrder.Valid {
+		insertOrder = doneOrder.Int64
+		if _, err := tx.Exec(`UPDATE status SET sort_order = sort_order + 1 WHERE sort_order >= ?`, insertOrder); err != nil {
+			return fmt.Errorf("shift statuses for retired: %w", err)
+		}
+	} else {
+		var maxOrder int64
+		if err := tx.QueryRow(`SELECT COALESCE(MAX(sort_order), 0) FROM status`).Scan(&maxOrder); err != nil {
+			return fmt.Errorf("max sort order: %w", err)
+		}
+		insertOrder = maxOrder + 1
+	}
+	if _, err := tx.Exec(`INSERT INTO status (name, category, sort_order) VALUES ('Retired', 'retired', ?)`, insertOrder); err != nil {
+		return fmt.Errorf("insert retired status: %w", err)
+	}
+	return tx.Commit()
 }
 
 func (s *Store) Close() error {

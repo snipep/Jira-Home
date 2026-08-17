@@ -17,6 +17,7 @@
       <div class="group-header-spacer"></div>
       <span class="mini-status-count status-todo" title="To Do">{{.TodoCount}}</span>
       <span class="mini-status-count status-inprogress" title="In Progress">{{.InProgressCount}}</span>
+      {{if .RetiredCount}}<span class="mini-status-count status-retired" title="Retired">{{.RetiredCount}}</span>{{end}}
       <span class="mini-status-count status-done" title="Done">{{.DoneCount}}</span>
       {{if eq .Sprint.State "planned"}}
         <form method="post" action="/sprints/{{.Sprint.ID}}/start"><button class="btn" type="submit">Start sprint</button></form>
@@ -47,6 +48,30 @@
     </div>
     <div class="row-list">
       {{range .Backlog}}{{template "row.html" .}}{{else}}<div class="empty-hint">Backlog is empty.</div>{{end}}
+    </div>
+  </div>
+
+  <div class="group">
+    <div class="group-header">
+      <span class="group-title">Retired</span>
+      <span class="group-sub">{{len .Retired}} issue{{if ne (len .Retired) 1}}s{{end}}</span>
+      <div class="group-header-spacer"></div>
+    </div>
+    <div class="row-list">
+      {{$restoreID := .RestoreStatusID}}
+      {{range .Retired}}
+      <div class="row" style="--card-color:{{if .EpicID}}{{epicColor .EpicID}}{{else}}{{.TypeColor}}{{end}}" id="row-{{.ID}}">
+        <span class="type-icon" style="background:{{.TypeColor}}" title="{{.TypeName}}">{{.TypeIcon}}</span>
+        <span class="row-key">{{.Key}}</span>
+        <a class="row-summary" href="/issues/{{.IssueNumber}}"
+           hx-get="/issues/{{.IssueNumber}}" hx-target="#detail-panel-body" hx-swap="innerHTML">{{.Summary}}</a>
+        <div class="row-right">
+          <span class="status-pill {{statusClass .StatusCategory}}">{{upper .StatusName}}</span>
+          <button class="btn btn-sm" title="Move back to the backlog"
+                  hx-patch="/issues/{{.IssueNumber}}/move" hx-vals='{"status_id":"{{$restoreID}}"}'>↩ Restore</button>
+        </div>
+      </div>
+      {{else}}<div class="empty-hint">Nothing retired.</div>{{end}}
     </div>
   </div>
 </div>

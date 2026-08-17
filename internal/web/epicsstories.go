@@ -9,7 +9,6 @@ import (
 type TypeGroup struct {
 	Type   model.IssueType
 	Issues []model.Issue
-	Points int
 }
 
 type EpicsStoriesData struct {
@@ -45,8 +44,7 @@ func (s *Server) handleEpicsStories(w http.ResponseWriter, r *http.Request) {
 		if !t.NoSprint {
 			continue
 		}
-		group := byType[t.ID]
-		data.Groups = append(data.Groups, TypeGroup{Type: t, Issues: group, Points: sumPoints(group)})
+		data.Groups = append(data.Groups, TypeGroup{Type: t, Issues: byType[t.ID]})
 	}
 
 	s.render(w, r, "epics_stories.html", data, "Epics", "epics-stories")
