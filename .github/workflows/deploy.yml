@@ -1,0 +1,31 @@
+name: Deploy Jira Home
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, jira-home]
+    steps:
+      - name: Pull latest changes
+        run: |
+          cd /opt/jira-home
+          git fetch origin
+          git reset --hard origin/main
+
+      - name: Build
+        run: |
+          cd /opt/jira-home
+          export PATH=/usr/local/go/bin:$PATH
+          go build -o jira-home .
+
+      - name: Restart service
+        run: sudo systemctl restart jira-home.service
+
+      - name: Verify
+        run: |
+          sleep 2
+          sudo systemctl is-active jira-home.service
+          curl -sf -o /dev/null http://localhost:8080/board && echo "Health check OK"
